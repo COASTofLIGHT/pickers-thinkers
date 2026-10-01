@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alphabet Rush</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Atkinson+Hyperlegible:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist: #EDF3F2;
+    --ink: #10303A;
+    --ink-soft: #456670;
+    --focus: #0B62A4;
+    --panel: #F9FBFB;
+    --line: rgba(16, 48, 58, 0.14);
+    --teal: #A8D5CB;
+    --sand: #F2D9A6;
+    --coral: #F4B5A0;
+    --lilac: #C9C3EA;
+    --sky: #A9CCEB;
+    --rose: #F0C2D3;
+    --leaf: #C7DE9F;
+    --font: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0; min-height: 100%;
+    background: var(--mist); color: var(--ink);
+    font-family: var(--font);
+    -webkit-text-size-adjust: 100%;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; margin: 0; letter-spacing: -0.02em; line-height: 1.05; }
+  button { font-family: var(--font); }
+  button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
+  footer { color: var(--ink-soft); font-size: 0.9rem; }
+  main {
+    width: 100%; max-width: 760px; padding: 14px 20px 20px;
+    display: flex; flex-direction: column; gap: 12px; flex: 1;
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .hint { color: var(--ink-soft); font-size: 1rem; margin: 0; }
+
+  .tile {
+    width: 100%; height: clamp(170px, 38vh, 400px);
+    border-radius: 1.1rem;
+    background: var(--sky); color: var(--ink);
+    display: grid; place-items: center;
+    transition: background-color 120ms linear;
+    overflow: hidden; user-select: none;
+  }
+  .tile.idle { background: var(--panel); color: var(--ink-soft); border: 3px dashed var(--line); }
+  .tile.stopped { box-shadow: inset 0 0 0 10px var(--ink); }
+  .letter {
+    font-family: "Atkinson Hyperlegible", var(--font);
+    font-weight: 700;
+    font-size: min(32vh, 40vw, 20rem);
+    line-height: 1;
+  }
+  .letter.pop { animation: pop 160ms ease-out; }
+  @keyframes pop { from { transform: scale(0.82); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  .idle .letter { font-size: clamp(1.4rem, 5vw, 2.2rem); font-family: var(--font); font-weight: 700; text-align: center; padding: 0 24px; }
+
+  .timer { height: 10px; margin-top: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+  .timer span { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 5px; }
+
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .score { background: var(--panel); border: 1px solid var(--line); border-radius: 0.9rem; padding: 6px 14px; }
+  .score b { display: block; font-size: 1.6rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score small { color: var(--ink-soft); font-size: 0.9rem; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button.big {
+    font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em;
+    padding: 12px; border-radius: 0.9rem; border: 0; cursor: pointer; color: var(--ink);
+    min-height: 58px;
+  }
+  #startBtn { background: var(--leaf); }
+  #stopBtn { background: var(--coral); }
+  button.big:hover:not(:disabled) { filter: brightness(0.96); }
+  button.big:disabled { opacity: 0.35; cursor: default; }
+
+  .options { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; }
+  fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  legend { float: left; margin-right: 8px; color: var(--ink-soft); font-size: 0.95rem; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span {
+    display: inline-block; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 0.95rem;
+  }
+  .seg input:checked + span { background: var(--ink); color: var(--mist); border-color: var(--ink); }
+  .seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .options.locked { opacity: 0.45; pointer-events: none; }
+
+  @media (max-width: 480px) {
+    .score b { font-size: 1.3rem; }
+    button.big { font-size: 1.25rem; min-height: 54px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .letter.pop { animation: none; }
+    .tile { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Alphabet Rush</h1>
+    <p class="hint">Say each letter before the next one. Stop when you say a letter incorrectly.</p>
+  </header>
+
+  <div class="stage">
+    <div class="tile idle" id="tile" aria-live="off">
+      <div class="letter" id="letter">Press Start</div>
+    </div>
+    <div class="timer" aria-hidden="true"><span id="bar"></span></div>
+  </div>
+
+  <div class="controls">
+    <button class="big" id="startBtn" type="button">Start</button>
+    <button class="big" id="stopBtn" type="button" disabled>Stop</button>
+  </div>
+
+  <div class="scores">
+    <div class="score"><b id="count">0</b><small>letters this round</small></div>
+    <div class="score"><b id="best">0</b><small>best round</small></div>
+    <div class="score"><b id="speed">2.0s</b><small>per letter</small></div>
+  </div>
+
+  <div class="options" id="options">
+    <fieldset>
+      <legend>Letters</legend>
+      <label class="seg"><input type="radio" name="case" value="upper" checked><span>ABC</span></label>
+      <label class="seg"><input type="radio" name="case" value="lower"><span>abc</span></label>
+      <label class="seg"><input type="radio" name="case" value="mixed"><span>Mixed</span></label>
+    </fieldset>
+    <fieldset>
+      <legend>Pool</legend>
+      <label class="seg"><input type="radio" name="pool" value="all" checked><span>All 26</span></label>
+      <label class="seg"><input type="radio" name="pool" value="tricky"><span>Tricky letters</span></label>
+    </fieldset>
+  </div>
+
+  <footer>Tricky letters: A E I G J H K Q U V B W Y R. Starts at 2 seconds and gets a little faster with every letter.</footer>
+</main>
+
+<script>
+(function () {
+  const START_MS = 2000;   // first letter
+  const FACTOR = 0.96;     // each letter is 4% faster
+  const MIN_MS = 600;      // fastest it gets
+
+  const ALL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const TRICKY = "AEIGJHKQUVBWYR".split("");
+  const COLOURS = ["--teal", "--sand", "--coral", "--lilac", "--sky", "--rose", "--leaf"];
+
+  const tile = document.getElementById("tile");
+  const letterEl = document.getElementById("letter");
+  const bar = document.getElementById("bar");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const countEl = document.getElementById("count");
+  const bestEl = document.getElementById("best");
+  const speedEl = document.getElementById("speed");
+  const options = document.getElementById("options");
+
+  let running = false, timer = null, interval = START_MS, count = 0, best = 0;
+  let lastLetter = null, lastColour = null;
+
+  try { best = parseInt(localStorage.getItem("alphabetRushBest") || "0", 10) || 0; } catch (e) { best = 0; }
+  bestEl.textContent = best;
+
+  const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
+
+  function pickLetter() {
+    const pool = val("pool") === "tricky" ? TRICKY : ALL;
+    let l;
+    do { l = pool[Math.floor(Math.random() * pool.length)]; } while (l === lastLetter && pool.length > 1);
+    lastLetter = l;
+    const mode = val("case");
+    if (mode === "lower") return l.toLowerCase();
+    if (mode === "mixed" && Math.random() < 0.5) return l.toLowerCase();
+    return l;
+  }
+
+  function pickColour() {
+    let c;
+    do { c = COLOURS[Math.floor(Math.random() * COLOURS.length)]; } while (c === lastColour);
+    lastColour = c;
+    return c;
+  }
+
+  function runBar(ms) {
+    bar.style.transition = "none";
+    bar.style.width = "100%";
+    void bar.offsetWidth;
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = "0%";
+  }
+
+  function showLetter() {
+    const c = pickColour();
+    tile.style.background = `var(${c})`;
+    letterEl.textContent = pickLetter();
+    letterEl.classList.remove("pop"); void letterEl.offsetWidth; letterEl.classList.add("pop");
+    speedEl.textContent = (interval / 1000).toFixed(1) + "s";
+    runBar(interval);
+    timer = setTimeout(next, interval);
+  }
+
+  function next() {
+    count++;
+    countEl.textContent = count;
+    interval = Math.max(MIN_MS, Math.round(interval * FACTOR));
+    showLetter();
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    count = 0; interval = START_MS; lastLetter = null;
+    countEl.textContent = 0;
+    tile.classList.remove("idle", "stopped");
+    options.classList.add("locked");
+    startBtn.disabled = true; stopBtn.disabled = false;
+    stopBtn.focus();
+    showLetter();
+  }
+
+  function stop() {
+    if (!running) return;
+    running = false;
+    clearTimeout(timer);
+    const w = getComputedStyle(bar).width;
+    bar.style.transition = "none"; bar.style.width = w;
+    tile.classList.add("stopped");
+    if (count > best) {
+      best = count; bestEl.textContent = best;
+      try { localStorage.setItem("alphabetRushBest", String(best)); } catch (e) {}
+    }
+    options.classList.remove("locked");
+    startBtn.disabled = false; stopBtn.disabled = true;
+    startBtn.textContent = "Start again";
+    startBtn.focus();
+  }
+
+  startBtn.addEventListener("click", start);
+  stopBtn.addEventListener("click", stop);
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space" && !(e.target instanceof HTMLInputElement)) {
+      e.preventDefault();
+      running ? stop() : start();
+    }
+  });
+  bestEl.parentElement.addEventListener("dblclick", () => {
+    best = 0; bestEl.textContent = 0;
+    try { localStorage.removeItem("alphabetRushBest"); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
