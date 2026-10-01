@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ask the Turning Tide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    background: #A9CCEB;
+    overflow: hidden;
+  }
+
+  .back {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top, 0px));
+    left: 20px;
+    z-index: 2;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #10303A;
+    opacity: 0.7;
+    text-decoration: none;
+  }
+  .back:hover { opacity: 1; text-decoration: underline; }
+
+  button.stage {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    outline: none;
+    background: #A9CCEB;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 8vw 7vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button.stage:focus {
+    outline: none;
+  }
+
+  .board {
+    max-width: 900px;
+    min-height: 1.4em;
+  }
+
+  .sentence {
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-weight: 700;
+    font-size: clamp(24px, 5.4vw, 58px);
+    line-height: 1.3;
+    color: #10303A;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .sentence.settled {
+    animation: settle 260ms ease;
+  }
+
+  @keyframes settle {
+    0% { transform: scaleY(0.85); opacity: 0.6; }
+    60% { transform: scaleY(1.05); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 1; }
+  }
+
+  .hint {
+    position: fixed;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #10303A;
+    opacity: 0.45;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+
+  .hint.hidden { opacity: 0; }
+</style>
+</head>
+<body>
+
+<a class="back" href="https://coastoflight.github.io/randomwords/">&larr; Pickers and Thinkers</a>
+
+<button class="stage" id="stage" aria-label="Ask the board">
+  <div class="board">
+    <div class="sentence" id="sentence">ask a question, then tap</div>
+  </div>
+</button>
+
+<div class="hint" id="hint">tap to ask</div>
+
+<script>
+  const answers = [
+    "Yes, without question.",
+    "The signs point to YES.",
+    "Absolutely.",
+    "It's looking good but wait and ask again later.",
+    "You already know the answer.",
+    "Yes, trust it.",
+    "Count on it.",
+    "The outlook is favourable.",
+    "Yes, and don't overthink it.",
+    "No.",
+    "Don't count on it.",
+    "All signs point to NO.",
+    "Probably not.",
+    "Can you repeat that, please?",
+    "Ask again later.",
+    "Ask again later.",
+    "Ask me in a different way.",
+    "Undecided."
+  ];
+
+  const sentenceEl = document.getElementById('sentence');
+  const hintEl = document.getElementById('hint');
+  const stageEl = document.getElementById('stage');
+
+  let spinning = false;
+  let lastFinal = -1;
+
+  function randomAnswerText(exclude) {
+    let i;
+    do { i = Math.floor(Math.random() * answers.length); } while (i === exclude && answers.length > 1);
+    return answers[i];
+  }
+
+  // Scramble a string into caps/random letters, character by character settling
+  function scrambleTo(target, onDone) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ      ";
+    const len = target.length;
+    let frame = 0;
+    // total scramble time budget, then settle
+    const scrambleDuration = 900; // ms of pure noise
+    const settleStart = performance.now();
+
+    function randomLine() {
+      let out = "";
+      for (let i = 0; i < len; i++) {
+        const c = target[i];
+        if (c === " ") { out += " "; continue; }
+        out += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return out;
+    }
+
+    function tick() {
+      const elapsed = performance.now() - settleStart;
+      if (elapsed < scrambleDuration) {
+        sentenceEl.textContent = randomLine();
+        requestAnimationFrame(tick);
+      } else {
+        settlePhase();
+      }
+    }
+
+    // After the noise phase, reveal the real text left-to-right in staggered chunks
+    function settlePhase() {
+      const revealSteps = 10;
+      let step = 0;
+      function revealTick() {
+        step++;
+        const revealCount = Math.floor((len * step) / revealSteps);
+        let out = "";
+        for (let i = 0; i < len; i++) {
+          if (i < revealCount || target[i] === " ") {
+            out += target[i];
+          } else {
+            out += chars[Math.floor(Math.random() * chars.length)];
+          }
+        }
+        sentenceEl.textContent = out;
+        if (step < revealSteps) {
+          setTimeout(revealTick, 45);
+        } else {
+          sentenceEl.textContent = target;
+          sentenceEl.classList.remove('settled');
+          void sentenceEl.offsetWidth;
+          sentenceEl.classList.add('settled');
+          if (onDone) onDone();
+        }
+      }
+      revealTick();
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function ask() {
+    if (spinning) return;
+    spinning = true;
+
+    if (hintEl && !hintEl.classList.contains('hidden')) {
+      hintEl.classList.add('hidden');
+    }
+
+    const finalText = randomAnswerText(lastFinal);
+    lastFinal = answers.indexOf(finalText);
+
+    scrambleTo(finalText.toUpperCase(), () => {
+      spinning = false;
+    });
+  }
+
+  stageEl.addEventListener('click', ask);
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      ask();
+    }
+  });
+</script>
+
+</body>
+</html>
