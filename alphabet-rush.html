@@ -47,6 +47,15 @@
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .hint { color: var(--ink-soft); font-size: 1rem; margin: 0; }
 
+  .back {
+    align-self: flex-start;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+  .back:hover { text-decoration: underline; }
+  .back:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
   .tile {
     width: 100%; height: clamp(170px, 38vh, 400px);
     border-radius: 1.1rem;
@@ -110,9 +119,11 @@
 </head>
 <body>
 <main>
+  <a class="back" href="https://coastoflight.github.io/pickers-thinkers/">&larr; Pickers and Thinkers</a>
+
   <header>
     <h1>Alphabet Rush</h1>
-    <p class="hint">Say each letter before the next one. Game over when you say a letter incorrectly.</p>
+    <p class="hint">Say each letter before the next one. Stop when you say a letter incorrectly.</p>
   </header>
 
   <div class="stage">
