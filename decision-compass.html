@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Decision Compass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    background: #A9CCEB;
+    overflow: hidden;
+  }
+
+  .back {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top, 0px));
+    left: 20px;
+    z-index: 2;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #10303A;
+    opacity: 0.7;
+    text-decoration: none;
+  }
+  .back:hover { opacity: 1; text-decoration: underline; }
+
+  button.stage {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    outline: none;
+    background: #A9CCEB;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 8vw 7vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button.stage:focus {
+    outline: none;
+  }
+
+  .wrap {
+    max-width: 900px;
+    transition: opacity 500ms ease, filter 500ms ease;
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  .wrap.fading {
+    opacity: 0;
+    filter: blur(6px);
+  }
+
+  .label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: clamp(13px, 2.2vw, 16px);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #10303A;
+    opacity: 0.55;
+    margin-bottom: 1.1rem;
+  }
+
+  .sentence {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+    font-size: clamp(26px, 5.2vw, 56px);
+    line-height: 1.3;
+    color: #10303A;
+    letter-spacing: -0.01em;
+  }
+
+  .hint {
+    position: fixed;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #10303A;
+    opacity: 0.45;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+
+  .hint.hidden { opacity: 0; }
+
+  .count {
+    position: fixed;
+    top: 28px;
+    right: 32px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: #10303A;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<a class="back" href="https://coastoflight.github.io/randomwords/">&larr; Pickers and Thinkers</a>
+
+<button class="stage" id="stage" aria-label="Roll another perspective">
+  <div class="wrap" id="wrap">
+    <div class="label" id="label"></div>
+    <div class="sentence" id="sentence"></div>
+  </div>
+</button>
+
+<div class="hint" id="hint">tap to begin</div>
+<div class="count" id="count"></div>
+
+<script>
+  const perspectives = [
+    { label: "Enemy", prompt: "What would someone who wants to see me fail advise, and what does that reveal?" },
+    { label: "Gut", prompt: "Forget logic \u2014 what's the instinctive, pre-verbal answer?" },
+    { label: "Death", prompt: "From your deathbed, does this decision even matter?" },
+    { label: "Caution", prompt: "What's the safest, most risk-averse path?" },
+    { label: "Courage", prompt: "What would you do if you weren't afraid?" },
+    { label: "Parent", prompt: "What would your parent say \u2014 and do you agree with them?" },
+    { label: "Friend", prompt: "What would you tell a close friend in this exact position?" },
+    { label: "Eternity", prompt: "Zoomed out to the scale of centuries, does this matter at all?" },
+    { label: "Child", prompt: "What would your ten-year-old self think of this choice?" },
+    { label: "Success", prompt: "What decision would the most \u201csuccessful\u201d version of you make?" },
+    { label: "Billionaire", prompt: "If money were no object, what would you do?" },
+    { label: "WTF", prompt: "What's the most absurd, rule-breaking option available?" },
+    { label: "Future Self", prompt: "What would you-in-twenty-years want you to do right now?" },
+    { label: "Stranger", prompt: "How would this look to someone with zero context or stake in it?" },
+    { label: "Hero", prompt: "What would the person you most admire actually do here?" },
+    { label: "Ancestor", prompt: "What would someone who came before you \u2014 who had far less \u2014 make of this dilemma?" },
+    { label: "Body", prompt: "Forget thoughts entirely \u2014 where do you feel this decision in your body, and what's it telling you?" },
+    { label: "Scientist", prompt: "Strip out emotion \u2014 what does the actual evidence say?" },
+    { label: "Artist", prompt: "Which option makes for a more interesting story or more beautiful life?" },
+    { label: "Nobody", prompt: "If no one would ever find out, what would you choose?" }
+  ];
+
+  const wrapEl = document.getElementById('wrap');
+  const labelEl = document.getElementById('label');
+  const sentenceEl = document.getElementById('sentence');
+  const hintEl = document.getElementById('hint');
+  const countEl = document.getElementById('count');
+  const stageEl = document.getElementById('stage');
+
+  let lastIdx = -1;
+  let shown = 0;
+
+  function pickIndex(exclude, max) {
+    if (max <= 1) return 0;
+    let i;
+    do { i = Math.floor(Math.random() * max); } while (i === exclude);
+    return i;
+  }
+
+  function next() {
+    const idx = pickIndex(lastIdx, perspectives.length);
+    lastIdx = idx;
+    shown++;
+
+    wrapEl.classList.add('fading');
+
+    setTimeout(() => {
+      labelEl.textContent = perspectives[idx].label;
+      sentenceEl.textContent = perspectives[idx].prompt;
+      countEl.textContent = shown + " / " + perspectives.length;
+      wrapEl.classList.remove('fading');
+    }, 350);
+
+    if (hintEl && !hintEl.classList.contains('hidden')) {
+      hintEl.classList.add('hidden');
+    }
+  }
+
+  (function init() {
+    labelEl.textContent = '';
+    sentenceEl.textContent = 'Tap to start analysing.';
+    countEl.textContent = '';
+  })();
+
+  stageEl.addEventListener('click', next);
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      next();
+    }
+  });
+</script>
+
+</body>
+</html>

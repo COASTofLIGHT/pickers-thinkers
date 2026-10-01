@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Oblique Strategies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    background: #A8D5CB;
+    overflow: hidden;
+  }
+
+  .back {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top, 0px));
+    left: 20px;
+    z-index: 2;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #10303A;
+    opacity: 0.7;
+    text-decoration: none;
+  }
+  .back:hover { opacity: 1; text-decoration: underline; }
+
+  button.stage {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    outline: none;
+    background: #A8D5CB;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 8vw 7vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button.stage:focus {
+    outline: none;
+  }
+
+  .sentence {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+    font-size: clamp(28px, 6vw, 68px);
+    line-height: 1.25;
+    color: #10303A;
+    letter-spacing: -0.01em;
+    max-width: 900px;
+    transition: opacity 500ms ease, filter 500ms ease;
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  .sentence.fading {
+    opacity: 0;
+    filter: blur(6px);
+  }
+
+  .hint {
+    position: fixed;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #10303A;
+    opacity: 0.45;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+
+  .hint.hidden { opacity: 0; }
+
+  .count {
+    position: fixed;
+    top: 28px;
+    right: 32px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: #10303A;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<a class="back" href="https://coastoflight.github.io/randomwords/">&larr; Pickers and Thinkers</a>
+
+<button class="stage" id="stage" aria-label="Show another strategy">
+  <div class="sentence" id="sentence"></div>
+</button>
+
+<div class="hint" id="hint">tap to begin</div>
+<div class="count" id="count"></div>
+
+<script>
+  const strategies = [
+    "Abandon normal instruments",
+    "Accept advice",
+    "A line has two sides",
+    "Ask your body",
+    "Balance the consistency principle with the inconsistency principle",
+    "Be dirty",
+    "Breathe more deeply",
+    "Bridges \u2013 build \u2013 burn",
+    "Change instrument roles",
+    "Change nothing and continue with immaculate consistency",
+    "Children\u2019s voices \u2013 speaking \u2013 singing",
+    "Cluster analysis",
+    "Convert a melodic element into a rhythmic element",
+    "Courage!",
+    "Cut a vital connection",
+    "Define an area as 'safe' and use it as an anchor",
+    "Destroy \u2013 nothing \u2013 the most important thing",
+    "Discard an axiom",
+    "Disconnect from desire",
+    "Do nothing for as long as possible",
+    "Don\u2019t be afraid of things because they\u2019re easy to do",
+    "Don\u2019t be frightened of clich\u00e9s",
+    "Do something boring",
+    "Do the washing up",
+    "Do the words need changing?",
+    "Emphasize differences",
+    "Emphasize repetitions",
+    "Emphasize the flaws",
+    "Faced with a choice, do both",
+    "Honor thy error as a hidden intention",
+    "How would you have done it?",
+    "Imagine the music as a moving chain or caterpillar",
+    "Overtly resist change",
+    "Put in earplugs",
+    "Remove specifics and convert to ambiguities",
+    "Repetition is a form of change",
+    "Reverse",
+    "Take a break",
+    "Trust in the you of now",
+    "Use an unacceptable color",
+    "Use filters",
+    "What would your closest friend do?",
+    "What to increase? What to reduce?",
+    "What are you really thinking about just now?",
+    "What mistakes did you make last time?"
+  ];
+
+  const sentenceEl = document.getElementById('sentence');
+  const hintEl = document.getElementById('hint');
+  const countEl = document.getElementById('count');
+  const stageEl = document.getElementById('stage');
+
+  let lastIdx = -1;
+  let shown = 0;
+
+  function pickIndex(exclude, max) {
+    if (max <= 1) return 0;
+    let i;
+    do { i = Math.floor(Math.random() * max); } while (i === exclude);
+    return i;
+  }
+
+  function next() {
+    const idx = pickIndex(lastIdx, strategies.length);
+    lastIdx = idx;
+    shown++;
+
+    sentenceEl.classList.add('fading');
+
+    setTimeout(() => {
+      sentenceEl.textContent = strategies[idx];
+      countEl.textContent = shown + " / " + strategies.length;
+      sentenceEl.classList.remove('fading');
+    }, 350);
+
+    if (hintEl && !hintEl.classList.contains('hidden')) {
+      hintEl.classList.add('hidden');
+    }
+  }
+
+  (function init() {
+    sentenceEl.textContent = 'Tap to begin the process.';
+    countEl.textContent = '';
+  })();
+
+  stageEl.addEventListener('click', next);
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      next();
+    }
+  });
+</script>
+
+</body>
+</html>
