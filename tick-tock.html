@@ -22,7 +22,7 @@
     --clock-c: #A8D5CB;
     --card-c: #C9C3EA;
     --ask: #F2D9A6;      /* the question and the answer underneath */
-    /* Past and to: the two halves of the clock, and the labels that belong to each */
+    /* Face time: the two halves of the clock, and the labels that belong to each */
     --past-c: #A8D5CB;
     --to-c: #F4B5A0;
   }
@@ -182,7 +182,7 @@
   .hand.ghost { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 3 5; opacity: 0.55; }
   .pin { fill: var(--ink); }
 
-  /* ---------- Past and to: the clock in the middle, the twelve times round it ---------- */
+  /* ---------- Face time: the clock in the middle, the twelve times round it ---------- */
 
   .wheel {
     flex: 1 1 auto;
@@ -450,10 +450,10 @@
   </div>
 
   <div class="frame">
-    <!-- All five tabs share this panel. Past and to uses the wheel; the four games use the clock on the left and a card on the right. -->
+    <!-- All five tabs share this panel. Face time uses the wheel; the four games use the clock on the left and a card on the right. -->
     <section class="game" id="game" role="tabpanel">
 
-      <!-- Past and to: the clock moves in here, with the twelve times round it. -->
+      <!-- Face time: the clock moves in here, with the twelve times round it. -->
       <div class="wheel" id="wheel" hidden>
         <svg class="wheel-lines" id="wheel-lines" aria-hidden="true" focusable="false"></svg>
         <button type="button" class="wheel-clock" id="wheel-clock" aria-label="The clock. Click for a random time."></button>
@@ -513,7 +513,7 @@
               <button type="button" data-numbers="none" aria-pressed="false" aria-label="No numbers">None</button>
             </span>
           </span>
-          <!-- Past and to has its own level: it starts with every time showing, and can be cut down. -->
+          <!-- Face time has its own level: it starts with every time showing, and can be cut down. -->
           <span class="setting" id="show-setting" hidden>
             <span class="setting-name">Level</span>
             <span class="switch" role="group" aria-label="Level">
@@ -546,7 +546,7 @@
    ?mode=stop, ?mode=truth or ?mode=later. Otherwise the page
    opens on the last one used.
 
-   learn: Past and to        The twelve times round the clock. Click one to hide it.
+   learn: Face time        The twelve times round the clock. Click one to hide it.
    read:  What's the time?   Look at the clock, say the time, check.
    stop:  Stop the clock     The hands move. Shout "Stop!" at the right time.
    truth: True or false?     Does the sentence match the clock?
@@ -555,7 +555,7 @@
    Each game has its own two tile colours.
 ---------------------------------------------------------------- */
 const GAMES = [
-  { id: "learn", label: "Past and to" },
+  { id: "learn", label: "Face time" },
   { id: "read",  label: "What's the time?", clockColour: "#A8D5CB", cardColour: "#C9C3EA" },
   { id: "stop",  label: "Stop the clock",   clockColour: "#F4B5A0", cardColour: "#A9CCEB" },
   { id: "truth", label: "True or false?",   clockColour: "#C7DE9F", cardColour: "#F0C2D3" },
@@ -643,7 +643,7 @@ function loadMode() {
 
 let mode = loadMode();
 let level = recall("level", Object.keys(LEVELS), "halves");   // the four games: start easy, build up
-let learnLevel = "fives";                                     // Past and to: always opens with every time showing
+let learnLevel = "fives";                                     // Face time: always opens with every time showing
 const levelNow = () => (mode === "learn" ? learnLevel : level);
 let numbers = recall("numbers", ["all", "four", "none"], "all");
 let speed = "slow";
@@ -820,7 +820,7 @@ const state = { learn: null, read: null, stop: null, truth: null, later: null };
 
 
 /* ===============================================================
-   Past and to
+   Face time
 
    The clock with its two halves, and the twelve times round it.
    Click a time to hide it and again to bring it back, so the class
@@ -1137,7 +1137,7 @@ const DEAL = { learn: randomLearn, read: dealRead, stop: () => dealStop(false), 
 
 function newTime() { DEAL[mode](); }
 
-/* Opening a tab for the first time. Past and to starts with no time on the clock; the games start with one. */
+/* Opening a tab for the first time. Face time starts with no time on the clock; the games start with one. */
 function firstTime() { if (mode === "learn") resetLearn(); else newTime(); }
 
 /* Space, Enter or a click on the clock: whatever comes next in this game. */
@@ -1172,7 +1172,7 @@ function applyMode() {
   $("speed-setting").hidden = mode !== "stop";
   ghostHand.setAttribute("hidden", "");
 
-  // The one clock moves between the wheel (Past and to) and the left-hand tile (the games).
+  // The one clock moves between the wheel (Face time) and the left-hand tile (the games).
   const learn = mode === "learn";
   wheelEl.hidden = !learn;
   $("stage").hidden = learn;
@@ -1267,7 +1267,7 @@ document.querySelectorAll("[data-speed]").forEach((b) => b.addEventListener("cli
 /* ---------- keyboard ----------
    Space or Enter moves the game on: show the answer, then a new time. In Stop the clock: start, stop, new time.
    N gives a new time. In True or false, T and F answer for the class.
-   In Past and to: Space or Enter gives a random time, then shows it. H hides or shows all the labels. */
+   In Face time: Space or Enter gives a random time, then shows it. H hides or shows all the labels. */
 let clickedOn = null;   // the button last clicked with the mouse or a finger
 document.addEventListener("pointerdown", (event) => {
   clickedOn = event.target.closest ? event.target.closest("button, a") : null;
