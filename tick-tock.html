@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tick Tock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist: #EDF3F2;
+    --paper: #FFFFFF;
+    --ink: #10303A;
+    --ink-soft: #456670;
+    --line: #5F808A;
+    --sea: #17677A;
+    --sea-deep: #124F5E;
+    --focus: #0B62A4;
+    --font: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    /* Tile colours are set by the game (see GAMES in the script) */
+    --clock-c: #A8D5CB;
+    --card-c: #C9C3EA;
+    --ask: #F2D9A6;      /* the question and the answer underneath */
+    /* Past and to: the two halves of the clock, and the labels that belong to each */
+    --past-c: #A8D5CB;
+    --to-c: #F4B5A0;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  [hidden] { display: none !important; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--mist);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    max-width: 1300px;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0 auto;
+    padding: clamp(0.85rem, 2.6vw, 2rem);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Title, tabs and the way back ---------- */
+
+  .top {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    column-gap: clamp(1rem, 2.5vw, 2rem);
+  }
+
+  .top h1 {
+    margin: 0 0 0.6rem;
+    font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+
+  .back {
+    margin: 0 0 0.75rem auto;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .back:hover { text-decoration: underline; }
+  .back:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  /* Tabs: the chosen one joins on to the frame underneath. */
+  .tabs { display: flex; gap: 0.2rem; }
+
+  .tab {
+    height: 2.75rem;
+    padding: 0 1.15rem;
+    border: 0;
+    border-radius: 0.7rem 0.7rem 0 0;
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .tab:hover { background: rgba(255, 255, 255, 0.55); color: var(--ink); }
+  .tab[aria-selected="true"] { background: var(--paper); color: var(--ink); }
+  .tab:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+  /* ---------- The frame: one game at a time ---------- */
+
+  .frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(0.7rem, 1.6vw, 1.1rem);
+    border-radius: 0.9rem;
+    background: var(--paper);
+  }
+
+  .game {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.55rem, 1.5vh, 0.9rem);
+  }
+
+  /* ---------- The clock and the card beside it ---------- */
+
+  .stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+    gap: clamp(0.6rem, 1.6vw, 1.1rem);
+  }
+
+  .tile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 100%;
+    border-radius: 0.7rem;
+    overflow: hidden;
+    color: var(--ink);
+    font: inherit;
+    text-align: center;
+  }
+
+  .clock-tile {
+    flex: 1.1 1 0;
+    padding: clamp(0.6rem, 1.6vw, 1.1rem);
+    border: 0;
+    background: var(--clock-c);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .clock-tile:hover { filter: brightness(0.97); }
+  .clock-tile:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
+
+  #clock {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .face { fill: var(--paper); stroke: var(--ink); stroke-width: 2.5; }
+  .tick { stroke: var(--ink); stroke-width: 1; stroke-linecap: round; opacity: 0.55; }
+  .tick.hour { stroke-width: 2.2; opacity: 1; }
+  .num {
+    fill: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    transition: opacity 0.35s ease;
+  }
+  .num.gone { opacity: 0; }
+  /* The hour hand is short and thick, the minute hand long and thin. */
+  .hand { stroke-linecap: round; }
+  .hand.hour { stroke: var(--ink); stroke-width: 7; }
+  .hand.minute { stroke: var(--sea); stroke-width: 4.2; }
+  .hand.ghost { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 3 5; opacity: 0.55; }
+  .pin { fill: var(--ink); }
+
+  /* ---------- Past and to: the clock in the middle, the twelve times round it ---------- */
+
+  .wheel {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+    border-radius: 0.7rem;
+    background: var(--mist);
+    overflow: hidden;
+  }
+
+  /* layoutWheel() in the script sizes the clock and puts each label beside its number. */
+  .wheel-clock {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+  }
+  .wheel-clock:focus-visible { outline: 4px solid var(--focus); outline-offset: 4px; }
+
+  .wheel-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .wheel-lines line { stroke: var(--line); stroke-width: 1.5; stroke-linecap: round; }
+  .wheel-lines line.now { stroke: var(--ink); stroke-width: 3.5; }
+
+  .chip {
+    position: absolute;
+    min-width: 3.4em;
+    padding: 0.32em 0.7em;
+    border: 2px solid transparent;
+    border-radius: 0.5em;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .chip.past { background: var(--past-c); }
+  .chip.to { background: var(--to-c); }
+  .chip.top { border-color: var(--line); }
+  .chip:hover { filter: brightness(0.96); }
+  .chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  /* A hidden time: just a "?" until it is clicked again. */
+  .chip.blank {
+    background: transparent;
+    border: 2px dashed rgba(16, 48, 58, 0.4);
+    color: var(--ink-soft);
+  }
+  /* The label for the time on the clock. */
+  .chip.now { box-shadow: 0 0 0 4px var(--ink); }
+
+  /* The two halves of the clock face. */
+  .half-past { fill: var(--past-c); }
+  .half-to { fill: var(--to-c); }
+  .half-word {
+    fill: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 800;
+    text-anchor: middle;
+    dominant-baseline: central;
+    opacity: 0.6;
+  }
+
+  /* Too narrow for labels round the clock: the clock sits on top and the labels make a list. */
+  .wheel.stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1rem;
+    overflow: visible;
+  }
+  .wheel.stacked .wheel-clock { position: static; transform: none; width: min(100%, 17rem); aspect-ratio: 1; }
+  .wheel.stacked .wheel-lines { display: none; }
+  .wheel.stacked .labels { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%; font-size: 1.1rem; }
+  .wheel.stacked .chip { position: static; white-space: normal; }
+
+  .card {
+    flex: 1 1 0;
+    padding: clamp(1rem, 2.6vw, 2rem);
+    border: 3px solid transparent;
+    background: var(--card-c);
+    transition: background-color 0.3s ease;
+  }
+  /* What's the time: the card is a "?" until the answer is shown. */
+  .card.covered {
+    background: transparent;
+    border: 3px dashed rgba(16, 48, 58, 0.3);
+  }
+  .card.covered:hover { border-color: var(--ink-soft); }
+
+  .cover {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: clamp(3rem, 9vw, 8rem);
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .cover:focus-visible { outline: 4px solid var(--focus); outline-offset: -6px; }
+
+  /* fitCard() in the script picks the biggest size that fits. */
+  .card-text {
+    max-width: 100%;
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    text-wrap: balance;
+  }
+
+  .whole { white-space: nowrap; }
+
+  @keyframes settle {
+    from { opacity: 0; transform: translateY(0.4rem); }
+    to   { opacity: 1; transform: none; }
+  }
+  .fresh { animation: settle 0.22s ease-out; }
+
+  /* ---------- The question, then the answer ---------- */
+
+  .ask {
+    flex: 0 0 auto;
+    padding: clamp(0.8rem, 1.8vw, 1.25rem) clamp(1rem, 2.2vw, 1.6rem);
+    border-radius: 0.7rem;
+    background: var(--ask);
+  }
+  .ask p {
+    margin: 0;
+    font-size: clamp(1.1rem, min(2.3vw, 3.8vh), 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .ask.fresh { animation: none; }
+  .ask.fresh p { animation: settle 0.3s ease-out both; }
+
+  /* ---------- Buttons and switches ---------- */
+
+  .controls {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .btn, .btn-primary {
+    height: 2.6rem;
+    padding: 0 1.3rem;
+    border-radius: 0.6rem;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn {
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--line);
+  }
+  .btn:hover { border-color: var(--ink); }
+
+  .btn-primary {
+    background: var(--sea);
+    color: #fff;
+    border: 0;
+  }
+  .btn-primary:hover { background: var(--sea-deep); }
+
+  .btn:active, .btn-primary:active { transform: translateY(1px); }
+  .btn:focus-visible, .btn-primary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+  /* Speed, numbers and level sit together on the right. */
+  .settings {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.1rem;
+  }
+  .setting { display: inline-flex; align-items: center; gap: 0.5rem; }
+  .setting-name { color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
+
+  .switch {
+    display: inline-flex;
+    height: 2.6rem;
+    border: 2px solid var(--line);
+    border-radius: 0.6rem;
+    overflow: hidden;
+  }
+  .switch button {
+    padding: 0 0.85rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .switch button.on { background: var(--ink); color: #fff; }
+  .switch button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+  /* ---------- Smaller screens ---------- */
+
+  /* The tabs drop to their own row, flush with the frame's left edge. */
+  @media (max-width: 1320px) {
+    .tabs { order: 3; flex-basis: 100%; }
+    .back { margin-bottom: 0.6rem; }
+    .frame { border-top-left-radius: 0; }
+  }
+
+  /* Phones: everything stacks and the page scrolls if it needs to. */
+  @media (max-width: 720px) {
+    html, body { height: auto; overflow: auto; }
+    .page { height: auto; min-height: 100vh; min-height: 100dvh; }
+    .tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex: 0 0 auto; padding: 0 0.5rem; font-size: 0.85rem; }
+    .stage { flex-direction: column; }
+    .tile { height: auto; }
+    .clock-tile { flex: 0 0 auto; aspect-ratio: 1; }
+    .card { flex: 0 0 auto; min-height: 9rem; }
+    .settings { margin-left: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fresh, .ask.fresh p { animation: none; }
+    .num, .clock-tile, .card { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="top">
+    <h1>Tick Tock</h1>
+    <div class="tabs" role="tablist" aria-label="Games" id="tabs"></div>
+    <a class="back" href="./">&larr; Pickers and Thinkers</a>
+  </div>
+
+  <div class="frame">
+    <!-- All five tabs share this panel. Past and to uses the wheel; the four games use the clock on the left and a card on the right. -->
+    <section class="game" id="game" role="tabpanel">
+
+      <!-- Past and to: the clock moves in here, with the twelve times round it. -->
+      <div class="wheel" id="wheel" hidden>
+        <svg class="wheel-lines" id="wheel-lines" aria-hidden="true" focusable="false"></svg>
+        <button type="button" class="wheel-clock" id="wheel-clock" aria-label="The clock. Click for a random time."></button>
+        <div class="labels" id="labels"></div>
+      </div>
+
+      <div class="stage" id="stage">
+        <button type="button" class="tile clock-tile" id="clock-tile" aria-label="The clock. Click to carry on.">
+          <svg id="clock" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+            <circle class="face" cx="100" cy="100" r="96"/>
+            <g id="halves" hidden>
+              <path class="half-past" d="M100 5.3 A94.7 94.7 0 0 1 100 194.7 Z"/>
+              <path class="half-to" d="M100 194.7 A94.7 94.7 0 0 1 100 5.3 Z"/>
+              <text class="half-word" x="131" y="100">past</text>
+              <text class="half-word" x="70" y="100">to</text>
+            </g>
+            <g id="ticks"></g>
+            <g id="nums"></g>
+            <line class="hand ghost" id="ghost" x1="100" y1="100" x2="100" y2="38" hidden/>
+            <line class="hand hour" id="hour-hand" x1="100" y1="108" x2="100" y2="60"/>
+            <line class="hand minute" id="minute-hand" x1="100" y1="112" x2="100" y2="38"/>
+            <circle class="pin" cx="100" cy="100" r="5"/>
+          </svg>
+        </button>
+
+        <div class="tile card" id="card">
+          <button type="button" class="cover" id="cover" aria-label="Show the time" hidden><span>?</span></button>
+          <span class="card-text" id="card-text"></span>
+        </div>
+      </div>
+
+      <div class="ask" id="ask" aria-live="polite">
+        <p id="line"></p>
+      </div>
+
+      <div class="controls">
+        <button type="button" class="btn-primary" id="main-btn"></button>
+        <button type="button" class="btn" id="true-btn" hidden>True</button>
+        <button type="button" class="btn" id="false-btn" hidden>False</button>
+        <button type="button" class="btn" id="again-btn" hidden>Again</button>
+        <button type="button" class="btn" id="new-btn">New time</button>
+        <button type="button" class="btn" id="hide-btn" hidden>Hide all</button>
+
+        <div class="settings">
+          <span class="setting" id="speed-setting" hidden>
+            <span class="setting-name">Speed</span>
+            <span class="switch" role="group" aria-label="Speed">
+              <button type="button" data-speed="slow" class="on" aria-pressed="true">Slow</button>
+              <button type="button" data-speed="fast" aria-pressed="false">Fast</button>
+            </span>
+          </span>
+          <span class="setting">
+            <span class="setting-name">Numbers</span>
+            <span class="switch" role="group" aria-label="Numbers on the clock">
+              <button type="button" data-numbers="all" class="on" aria-pressed="true" aria-label="All twelve numbers">1&ndash;12</button>
+              <button type="button" data-numbers="four" aria-pressed="false" aria-label="Only 12, 3, 6 and 9">12 3 6 9</button>
+              <button type="button" data-numbers="none" aria-pressed="false" aria-label="No numbers">None</button>
+            </span>
+          </span>
+          <span class="setting">
+            <span class="setting-name">Level</span>
+            <span class="switch" role="group" aria-label="Level">
+              <button type="button" data-level="halves" class="on" aria-pressed="true" title="o'clock and half past">Halves</button>
+              <button type="button" data-level="quarters" aria-pressed="false" title="and quarter past, quarter to">Quarters</button>
+              <button type="button" data-level="fives" aria-pressed="false" title="and five past, ten past, twenty to…">Fives</button>
+            </span>
+          </span>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+</main>
+
+<script>
+/* ---------------------------------------------------------------
+   One analogue clock and five tabs: a revision page and four games.
+   A link can open a tab directly: ?mode=learn, ?mode=read,
+   ?mode=stop, ?mode=truth or ?mode=later. Otherwise the page
+   opens on the last one used.
+
+   learn: Past and to        The twelve times round the clock. Click one to hide it.
+   read:  What's the time?   Look at the clock, say the time, check.
+   stop:  Stop the clock     The hands move. Shout "Stop!" at the right time.
+   truth: True or false?     Does the sentence match the clock?
+   later: Later, earlier     What's the time 20 minutes later?
+
+   Each game has its own two tile colours.
+---------------------------------------------------------------- */
+const GAMES = [
+  { id: "learn", label: "Past and to" },
+  { id: "read",  label: "What's the time?", clockColour: "#A8D5CB", cardColour: "#C9C3EA" },
+  { id: "stop",  label: "Stop the clock",   clockColour: "#F4B5A0", cardColour: "#A9CCEB" },
+  { id: "truth", label: "True or false?",   clockColour: "#C7DE9F", cardColour: "#F0C2D3" },
+  { id: "later", label: "Later, earlier",   clockColour: "#C9C3EA", cardColour: "#A8D5CB" }
+];
+
+/* ---------------------------------------------------------------
+   LEVELS: the minutes that can come up at each level.
+   Halves:   o'clock and half past
+   Quarters: and quarter past, quarter to
+   Fives:    and five past, ten past, twenty to …
+---------------------------------------------------------------- */
+const LEVELS = {
+  halves: [0, 30],
+  quarters: [0, 15, 30, 45],
+  fives: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+};
+
+/* ---------------------------------------------------------------
+   LATER, EARLIER: how many minutes the clock can jump at each
+   level. A minus number goes back in time.
+---------------------------------------------------------------- */
+const JUMPS = {
+  halves: [30, -30, 60, -60, 120, -120],
+  quarters: [15, -15, 45, -45, 30, -30, 60, -60],
+  fives: [5, -5, 10, -10, 20, -20, 25, -25, 35, -35, 40, -40, 50, -50, 15, -15]
+};
+
+/* Stop the clock: how many seconds one minute on the clock takes. */
+const SPEEDS = { slow: 0.45, fast: 0.22 };
+
+const HOUR_WORDS = ["twelve", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven"];
+const MINUTE_WORDS = { 5: "five", 10: "ten", 20: "twenty", 25: "twenty-five" };
+const COUNT_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven",
+  "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"];
+
+const $ = (id) => document.getElementById(id);
+
+function shuffle(list) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+/* A time is a number of minutes after twelve o'clock, so 195 is quarter past three. */
+const wrap = (t) => ((Math.round(t) % 720) + 720) % 720;
+
+/* The words for where the minute hand is: "o'clock", "quarter past", "twenty-five to". */
+function phrase(m) {
+  if (m === 0) return "o'clock";
+  if (m === 15) return "quarter past";
+  if (m === 30) return "half past";
+  if (m === 45) return "quarter to";
+  return m < 30 ? MINUTE_WORDS[m] + " past" : MINUTE_WORDS[60 - m] + " to";
+}
+
+/* The time in words, the British way: "quarter past three", "twenty-five to four". */
+function words(time) {
+  const t = wrap(time);
+  const h = Math.floor(t / 60), m = t % 60;
+  if (m === 0) return HOUR_WORDS[h] + " o'clock";
+  return phrase(m) + " " + HOUR_WORDS[m > 30 ? (h + 1) % 12 : h];
+}
+
+/* ---------- settings: remembered from the last visit ---------- */
+
+function recall(key, allowed, fallback) {
+  try {
+    const saved = localStorage.getItem("ticktock." + key);
+    if (allowed.includes(saved)) return saved;
+  } catch (e) { /* storage unavailable */ }
+  return fallback;
+}
+function remember(key, value) {
+  try { localStorage.setItem("ticktock." + key, value); } catch (e) { /* ignore */ }
+}
+
+function loadMode() {
+  const ids = GAMES.map((g) => g.id);
+  const fromLink = (new URLSearchParams(location.search).get("mode") || "").toLowerCase();
+  return ids.includes(fromLink) ? fromLink : recall("mode", ids, "learn");
+}
+
+let mode = loadMode();
+let level = recall("level", Object.keys(LEVELS), "halves");
+let numbers = recall("numbers", ["all", "four", "none"], "all");
+let speed = "slow";
+
+/* Times are dealt from a shuffled deck for each game and level, so none repeats until all have been used. */
+const decks = {};
+function dealTime() {
+  const key = mode + "." + level;
+  if (!decks[key] || !decks[key].length) {
+    const all = [];
+    for (let h = 0; h < 12; h++) LEVELS[level].forEach((m) => all.push(h * 60 + m));
+    decks[key] = shuffle(all);
+  }
+  return decks[key].pop();
+}
+
+
+/* ===============================================================
+   The clock
+================================================================ */
+
+const hourHand = $("hour-hand"), minuteHand = $("minute-hand"), ghostHand = $("ghost");
+const SVG = "http://www.w3.org/2000/svg";
+
+/* Sixty marks round the edge and the twelve numbers. The hands stop just short of the numbers,
+   so the minute hand never covers the one it is pointing at. */
+for (let i = 0; i < 60; i++) {
+  const mark = document.createElementNS(SVG, "line");
+  const big = i % 5 === 0;
+  mark.setAttribute("class", big ? "tick hour" : "tick");
+  mark.setAttribute("x1", 100); mark.setAttribute("x2", 100);
+  mark.setAttribute("y1", 8); mark.setAttribute("y2", big ? 16 : 12);
+  mark.setAttribute("transform", "rotate(" + i * 6 + " 100 100)");
+  $("ticks").appendChild(mark);
+}
+for (let n = 1; n <= 12; n++) {
+  const angle = n * 30 * Math.PI / 180;
+  const num = document.createElementNS(SVG, "text");
+  num.setAttribute("class", "num");
+  num.setAttribute("x", 100 + 74 * Math.sin(angle));
+  num.setAttribute("y", 100 - 74 * Math.cos(angle));
+  num.dataset.n = n;
+  num.textContent = n;
+  $("nums").appendChild(num);
+}
+
+function paintNumbers() {
+  document.querySelectorAll(".num").forEach((num) => {
+    const n = Number(num.dataset.n);
+    num.classList.toggle("gone", numbers === "none" || (numbers === "four" && n % 3 !== 0));
+  });
+}
+
+let hourAngle = 0, minuteAngle = 0;   // where the hands are now, in degrees
+let moving = 0;                       // the animation frame in use, if any
+const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function setAngles(h, m) {
+  hourAngle = h; minuteAngle = m;
+  hourHand.setAttribute("transform", "rotate(" + h + " 100 100)");
+  minuteHand.setAttribute("transform", "rotate(" + m + " 100 100)");
+}
+
+/* Put the hands exactly on a time. Halves of a minute are fine: the hour hand moves smoothly. */
+function setClock(time) { setAngles(time / 2, time * 6); }
+
+function stopMoving() { cancelAnimationFrame(moving); moving = 0; }
+
+/* A new time: each hand swings the short way round to its new place. */
+function glideTo(time) {
+  stopMoving();
+  if (calm.matches) { setClock(time); return; }
+  const turn = (from, to) => ((to - from) % 360 + 540) % 360 - 180;
+  const h0 = hourAngle, m0 = minuteAngle;
+  const dh = turn(h0, time / 2), dm = turn(m0, time * 6);
+  const began = performance.now(), lasts = 450;
+  const frame = (now) => {
+    const p = Math.min(1, (now - began) / lasts), ease = 1 - Math.pow(1 - p, 3);
+    setAngles(h0 + dh * ease, m0 + dm * ease);
+    if (p < 1) moving = requestAnimationFrame(frame); else setClock(time);
+  };
+  moving = requestAnimationFrame(frame);
+}
+
+/* Later, earlier: the clock really runs forwards or backwards to the new time. */
+function runTo(from, to) {
+  stopMoving();
+  if (calm.matches) { setClock(to); return; }
+  const began = performance.now(), lasts = Math.min(1800, 500 + Math.abs(to - from) * 12);
+  const frame = (now) => {
+    const p = Math.min(1, (now - began) / lasts);
+    const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    setClock(from + (to - from) * ease);
+    if (p < 1) moving = requestAnimationFrame(frame);
+  };
+  moving = requestAnimationFrame(frame);
+}
+
+
+/* ===============================================================
+   The card, the line underneath and the buttons
+================================================================ */
+
+const cardEl = $("card"), cardText = $("card-text"), coverBtn = $("cover");
+const askEl = $("ask"), lineEl = $("line");
+const mainBtn = $("main-btn"), trueBtn = $("true-btn"), falseBtn = $("false-btn");
+const againBtn = $("again-btn"), newBtn = $("new-btn"), hideBtn = $("hide-btn");
+
+function replay(el) {
+  el.classList.remove("fresh");
+  void el.offsetWidth;
+  el.classList.add("fresh");
+}
+
+let lineNow = "";
+function say(text) {
+  if (text === lineNow) return;
+  lineNow = text;
+  lineEl.textContent = text;
+  replay(askEl);
+}
+
+/* The biggest text size at which the words fit the card. */
+function fitCard() {
+  if (cardText.hidden) return;
+  const style = getComputedStyle(cardEl);
+  const maxW = cardEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const maxH = cardEl.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  if (maxW <= 0 || maxH <= 0) return;
+  const fits = (px) => {
+    cardText.style.fontSize = px + "px";
+    return cardText.scrollWidth <= maxW + 1 && cardText.offsetHeight <= maxH;
+  };
+  let low = 14, high = 110;
+  while (high - low > 1) {
+    const mid = (low + high) / 2;
+    if (fits(mid)) low = mid; else high = mid;
+  }
+  cardText.style.fontSize = Math.floor(low) + "px";
+}
+
+let cardNow = null;
+function showCard(text, covered) {
+  cardEl.classList.toggle("covered", covered);
+  coverBtn.hidden = !covered;
+  cardText.hidden = covered;
+  if (covered) { cardNow = null; return; }
+  if (text !== cardNow) {
+    cardNow = text;
+    // One piece per word, so "twenty-five" is never broken at its hyphen.
+    cardText.replaceChildren(...text.split(" ").flatMap((word, i) => {
+      const piece = document.createElement("span");
+      piece.className = "whole";
+      piece.textContent = word;
+      return i ? [" ", piece] : [piece];
+    }));
+    replay(cardText);
+  }
+  fitCard();
+}
+
+/* Which buttons are on show. The first one named is the main (coloured) one. */
+function showButtons(main, mainLabel, others) {
+  mainBtn.hidden = main !== "main";
+  if (mainLabel) mainBtn.textContent = mainLabel;
+  trueBtn.hidden = falseBtn.hidden = !others.includes("truth");
+  againBtn.hidden = !others.includes("again");
+  hideBtn.hidden = !others.includes("hide");
+  newBtn.className = main === "new" ? "btn-primary" : "btn";
+}
+
+/* Each game keeps its own place, so switching back carries on where it left off. */
+const state = { learn: null, read: null, stop: null, truth: null, later: null };
+
+
+/* ===============================================================
+   Past and to
+
+   The clock with its two halves, and the twelve times round it.
+   Click a time to hide it and again to bring it back, so the class
+   can be tested on a few or on all of them. "Random time" puts a
+   time on the clock; the label it needs is marked.
+   The level decides which times are there at all.
+================================================================ */
+
+const wheelEl = $("wheel"), wheelClock = $("wheel-clock"), labelsEl = $("labels"), linesEl = $("wheel-lines");
+const hiddenTimes = new Set();    // the minutes whose labels are hidden just now
+const chips = {}, links = {};
+
+for (let m = 0; m < 60; m += 5) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "chip " + (m === 0 ? "top" : m <= 30 ? "past" : "to");
+  chip.addEventListener("click", () => {
+    if (hiddenTimes.has(m)) hiddenTimes.delete(m); else hiddenTimes.add(m);
+    paintLearn();
+  });
+  labelsEl.appendChild(chip);
+  chips[m] = chip;
+  links[m] = linesEl.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "line"));
+}
+
+/* Each label sits just outside its number, on the side of the clock it belongs to, with a line to the edge. */
+function layoutWheel() {
+  if (wheelEl.hidden) return;
+  const W = wheelEl.clientWidth, H = wheelEl.clientHeight;
+  const round = W >= 640 && H >= 280 && !window.matchMedia("(max-width: 720px)").matches;
+  wheelEl.classList.toggle("stacked", !round);
+  if (!round) {
+    wheelClock.style.width = wheelClock.style.height = labelsEl.style.fontSize = "";
+    Object.values(chips).forEach((chip) => { chip.style.left = chip.style.top = chip.style.transform = ""; });
+    return;
+  }
+  const R = Math.min(H * 0.64, W * 0.3) / 2;      // the clock's radius
+  const out = R + R * 0.11 + 4;                   // how far out the labels start
+  wheelClock.style.width = wheelClock.style.height = R * 2 + "px";
+  labelsEl.style.fontSize = Math.max(14, Math.min(30, R * 0.165)) + "px";
+  linesEl.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+  for (let m = 0; m < 60; m += 5) {
+    const angle = m * 6 * Math.PI / 180;
+    const sin = Math.sin(angle), cos = Math.cos(angle);
+    const x = W / 2 + out * sin * 1.35, y = H / 2 - out * cos;     // wider than it is tall, to make room for the words
+    const chip = chips[m];
+    chip.style.left = x + "px";
+    chip.style.top = y + "px";
+    chip.style.transform = m === 0 ? "translate(-50%, -100%)" : m === 30 ? "translate(-50%, 0)"
+      : m < 30 ? "translate(0, -50%)" : "translate(-100%, -50%)";
+    const link = links[m];
+    link.setAttribute("x1", W / 2 + (R + 3) * sin); link.setAttribute("y1", H / 2 - (R + 3) * cos);
+    link.setAttribute("x2", x - 4 * sin);           link.setAttribute("y2", y + 4 * cos);
+  }
+}
+
+function resetLearn() {
+  stopMoving();
+  state.learn = { time: null, shown: false };     // no time yet, so the clock has no hands
+  paintLearn();
+}
+
+function randomLearn() {
+  state.learn = { time: dealTime(), shown: false };
+  paintLearn();
+  glideTo(state.learn.time);
+}
+
+function revealLearn() {
+  const s = state.learn;
+  if (s.time === null || s.shown) return;
+  s.shown = true;
+  paintLearn();
+}
+
+function hideOrShowAll() {
+  const here = LEVELS[level];
+  if (here.every((m) => hiddenTimes.has(m))) hiddenTimes.clear();
+  else here.forEach((m) => hiddenTimes.add(m));
+  paintLearn();
+}
+
+function paintLearn() {
+  const s = state.learn;
+  const here = LEVELS[level];
+  const onClock = s.time === null ? -1 : wrap(s.time) % 60;
+
+  for (let m = 0; m < 60; m += 5) {
+    const chip = chips[m], gone = hiddenTimes.has(m), there = here.includes(m);
+    chip.hidden = !there;
+    links[m].toggleAttribute("hidden", !there);
+    chip.classList.toggle("blank", gone);
+    chip.classList.toggle("now", m === onClock);
+    links[m].classList.toggle("now", m === onClock);
+    chip.textContent = gone ? "?" : phrase(m);
+    chip.setAttribute("aria-label", gone ? "A hidden time. Click to show it." : phrase(m) + ". Click to hide it.");
+  }
+  hourHand.toggleAttribute("hidden", s.time === null);
+  minuteHand.toggleAttribute("hidden", s.time === null);
+  hideBtn.textContent = here.every((m) => hiddenTimes.has(m)) ? "Show all" : "Hide all";
+
+  if (s.time === null) {
+    say("Click a time to hide it. Click it again to bring it back.");
+    showButtons("new", "", ["hide"]);
+  } else if (s.shown) {
+    say("It's " + words(s.time) + ".");
+    showButtons("new", "", ["hide"]);
+  } else {
+    say("What's the time?");
+    showButtons("main", "Show the time", ["hide"]);
+  }
+  layoutWheel();
+}
+
+wheelClock.addEventListener("click", () => carryOn());
+hideBtn.addEventListener("click", hideOrShowAll);
+
+
+/* ===============================================================
+   What's the time?
+================================================================ */
+
+function dealRead() {
+  state.read = { time: dealTime(), shown: false };
+  glideTo(state.read.time);
+  paintRead();
+}
+
+function paintRead() {
+  const s = state.read;
+  showCard(words(s.time), !s.shown);
+  if (s.shown) {
+    say("It's " + words(s.time) + ". What do you usually do at this time?");
+    showButtons("new", "", []);
+  } else {
+    say("What's the time?");
+    showButtons("main", "Show the time", []);
+  }
+}
+
+function revealRead() {
+  if (state.read.shown) return;
+  state.read.shown = true;
+  paintRead();
+}
+
+
+/* ===============================================================
+   Stop the clock
+================================================================ */
+
+function dealStop(sameTime) {
+  const target = sameTime ? state.stop.target : dealTime();
+  const start = target - 10 - Math.random() * 10;      // the clock starts 10 to 20 minutes before
+  state.stop = { target, start, time: start, phase: "ready", late: false };
+  glideTo(start);
+  paintStop();
+}
+
+function paintStop() {
+  const s = state.stop;
+  showCard(words(s.target), false);
+  ghostHand.toggleAttribute("hidden", s.phase !== "done");
+  ghostHand.setAttribute("transform", "rotate(" + s.target * 6 + " 100 100)");
+
+  if (s.phase !== "done") {
+    say("Shout \u201CStop!\u201D when the clock says this time.");
+    showButtons("main", s.phase === "running" ? "Stop" : "Start", []);
+    return;
+  }
+  const gap = Math.round(s.time - s.target);
+  const count = Math.abs(gap);
+  if (s.late) say("Too late! The clock went past " + words(s.target) + ".");
+  else if (gap === 0) say("Spot on! It's " + words(s.target) + ".");
+  else say(COUNT_WORDS[count] + (count === 1 ? " minute too " : " minutes too ") + (gap < 0 ? "early." : "late."));
+  showButtons("new", "", ["again"]);
+}
+
+function startStop() {
+  const s = state.stop;
+  if (s.phase === "running") { finishStop(false); return; }
+  if (s.phase !== "ready") return;
+  stopMoving();
+  s.phase = "running";
+  paintStop();
+  const began = performance.now();
+  const frame = (now) => {
+    s.time = s.start + (now - began) / 1000 / SPEEDS[speed];
+    setClock(s.time);
+    if (s.time > s.target + 12) { finishStop(true); return; }   // nobody shouted
+    moving = requestAnimationFrame(frame);
+  };
+  moving = requestAnimationFrame(frame);
+}
+
+function finishStop(late) {
+  stopMoving();
+  state.stop.phase = "done";
+  state.stop.late = late;
+  paintStop();
+}
+
+/* Leaving the tab while the clock is running puts it back to the start. */
+function restStop() {
+  const s = state.stop;
+  if (s && s.phase === "running") { stopMoving(); s.phase = "ready"; s.time = s.start; }
+}
+
+
+/* ===============================================================
+   True or false?
+================================================================ */
+
+/* A wrong sentence for this clock: the kind of slip a learner really makes. */
+function slip(time) {
+  const h = Math.floor(time / 60), m = time % 60;
+  const allowed = LEVELS[level];
+  const ideas = [];
+  // past and to the wrong way round: "twenty to six" for twenty past six
+  if (m !== 0 && m !== 30) ideas.push(m < 30 ? (h - 1) * 60 + (60 - m) : (h + 1) * 60 + (60 - m));
+  // the wrong hour: "quarter to five" for quarter to six, "half past four" for half past three
+  if (m > 30) ideas.push(time - 60);
+  if (m === 30) ideas.push(time + 60);
+  // the two hands the wrong way round: "quarter past twelve" for three o'clock
+  const swapped = (m / 5) * 60 + h * 5;
+  if (allowed.includes(swapped % 60)) ideas.push(swapped);
+  // o'clock and half past mixed up
+  if (m === 0) ideas.push(time + 30);
+
+  const good = ideas.map(wrap).filter((t) => t !== time);
+  return good.length ? good[Math.floor(Math.random() * good.length)] : wrap(time + 60);
+}
+
+function dealTruth() {
+  const time = dealTime();
+  const isTrue = Math.random() < 0.5;
+  state.truth = { time, says: isTrue ? time : slip(time), isTrue, result: "" };
+  glideTo(time);
+  paintTruth();
+}
+
+function paintTruth() {
+  const s = state.truth;
+  showCard("It's " + words(s.says) + ".", false);
+  if (!s.result) {
+    say("True or false?");
+    showButtons("", "", ["truth"]);
+    return;
+  }
+  const open = s.result === "right" ? "Yes! " : s.result === "wrong" ? "Not this time. " : "";
+  say(open + (s.isTrue ? "It's true." : "It's false. It's " + words(s.time) + "."));
+  showButtons("new", "", []);
+}
+
+/* The class votes and the teacher clicks their answer. With no answer, it just shows which it is. */
+function answerTruth(choice) {
+  const s = state.truth;
+  if (s.result) return;
+  s.result = choice === undefined ? "shown" : choice === s.isTrue ? "right" : "wrong";
+  paintTruth();
+}
+
+
+/* ===============================================================
+   Later, earlier
+================================================================ */
+
+function jumpWords(jump) {
+  const size = Math.abs(jump);
+  const length = size === 30 ? "half an hour" : size === 60 ? "one hour" : size === 120 ? "two hours" : size + " minutes";
+  return length + (jump > 0 ? " later" : " earlier");
+}
+
+function dealLater() {
+  const last = state.later ? state.later.jump : 0;
+  let jump;
+  do { jump = JUMPS[level][Math.floor(Math.random() * JUMPS[level].length)]; } while (jump === last);
+  state.later = { time: dealTime(), jump, shown: false };
+  glideTo(state.later.time);
+  paintLater();
+}
+
+function paintLater() {
+  const s = state.later;
+  const text = jumpWords(s.jump);
+  showCard(text, false);
+  if (s.shown) {
+    const start = text.charAt(0).toUpperCase() + text.slice(1);
+    say(start + (s.jump > 0 ? ", it's " : ", it was ") + words(s.time + s.jump) + ".");
+    showButtons("new", "", []);
+  } else {
+    say("What's the time now? And " + text + "?");
+    showButtons("main", "Show the answer", []);
+  }
+}
+
+function revealLater() {
+  const s = state.later;
+  if (s.shown) return;
+  s.shown = true;
+  runTo(s.time, s.time + s.jump);
+  paintLater();
+}
+
+
+/* ===============================================================
+   Moving between the games
+================================================================ */
+
+const DEAL = { learn: randomLearn, read: dealRead, stop: () => dealStop(false), truth: dealTruth, later: dealLater };
+
+function newTime() { DEAL[mode](); }
+
+/* Opening a tab for the first time. Past and to starts with no time on the clock; the games start with one. */
+function firstTime() { if (mode === "learn") resetLearn(); else newTime(); }
+
+/* Space, Enter or a click on the clock: whatever comes next in this game. */
+function carryOn() {
+  const s = state[mode];
+  if (mode === "learn") { if (s.time === null || s.shown) randomLearn(); else revealLearn(); }
+  else if (mode === "read") { if (s.shown) dealRead(); else revealRead(); }
+  else if (mode === "stop") { if (s.phase === "done") dealStop(false); else startStop(); }
+  else if (mode === "truth") { if (s.result) dealTruth(); else answerTruth(); }
+  else { if (s.shown) dealLater(); else revealLater(); }
+}
+
+mainBtn.addEventListener("click", carryOn);
+$("clock-tile").addEventListener("click", carryOn);
+coverBtn.addEventListener("click", revealRead);
+newBtn.addEventListener("click", newTime);
+againBtn.addEventListener("click", () => dealStop(true));
+trueBtn.addEventListener("click", () => answerTruth(true));
+falseBtn.addEventListener("click", () => answerTruth(false));
+
+const tabsEl = $("tabs");
+
+function applyMode() {
+  const game = GAMES.find((g) => g.id === mode);
+  tabsEl.querySelectorAll(".tab").forEach((tab) => {
+    const on = tab.id === "tab-" + mode;
+    tab.setAttribute("aria-selected", on);
+    tab.tabIndex = on ? 0 : -1;
+    if (on && tabsEl.scrollWidth > tabsEl.clientWidth) tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+  $("game").setAttribute("aria-labelledby", "tab-" + mode);
+  $("speed-setting").hidden = mode !== "stop";
+  ghostHand.setAttribute("hidden", "");
+
+  // The one clock moves between the wheel (Past and to) and the left-hand tile (the games).
+  const learn = mode === "learn";
+  wheelEl.hidden = !learn;
+  $("stage").hidden = learn;
+  (learn ? wheelClock : $("clock-tile")).appendChild($("clock"));
+  $("halves").toggleAttribute("hidden", !learn);
+  newBtn.textContent = learn ? "Random time" : "New time";
+  if (!learn) {
+    hourHand.removeAttribute("hidden");
+    minuteHand.removeAttribute("hidden");
+    document.documentElement.style.setProperty("--clock-c", game.clockColour);
+    document.documentElement.style.setProperty("--card-c", game.cardColour);
+  }
+
+  const s = state[mode];
+  if (!s) { firstTime(); return; }               // first visit; after that it carries on where it left off
+  if (learn) { if (s.time !== null) glideTo(s.time); paintLearn(); }
+  else if (mode === "read") { glideTo(s.time); paintRead(); }
+  else if (mode === "stop") { glideTo(s.time); paintStop(); }
+  else if (mode === "truth") { glideTo(s.time); paintTruth(); }
+  else { glideTo(s.shown ? s.time + s.jump : s.time); paintLater(); }
+}
+
+function chooseMode(id) {
+  restStop();
+  mode = id;
+  remember("mode", mode);
+  applyMode();
+}
+
+GAMES.forEach((game) => {
+  const tab = document.createElement("button");
+  tab.type = "button";
+  tab.className = "tab";
+  tab.id = "tab-" + game.id;
+  tab.setAttribute("role", "tab");
+  tab.setAttribute("aria-controls", "game");
+  tab.textContent = game.label;
+  tab.addEventListener("click", () => chooseMode(game.id));
+  tabsEl.appendChild(tab);
+});
+
+/* Left and right arrows move between the tabs when one of them has the focus. */
+tabsEl.addEventListener("keydown", (event) => {
+  if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+  const at = GAMES.findIndex((g) => g.id === mode);
+  const to = GAMES[(at + (event.key === "ArrowRight" ? 1 : GAMES.length - 1)) % GAMES.length];
+  chooseMode(to.id);
+  $("tab-" + to.id).focus();
+});
+
+/* ---------- the switches ---------- */
+
+function paintSwitch(name, value) {
+  document.querySelectorAll("[data-" + name + "]").forEach((b) => {
+    const on = b.dataset[name] === value;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on);
+  });
+}
+
+document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
+  level = b.dataset.level;
+  remember("level", level);
+  paintSwitch("level", level);
+  // A new level means a new time everywhere: here now, and in the other games when they are next opened.
+  stopMoving();
+  Object.keys(state).forEach((id) => { state[id] = null; });
+  firstTime();
+}));
+
+document.querySelectorAll("[data-numbers]").forEach((b) => b.addEventListener("click", () => {
+  numbers = b.dataset.numbers;
+  remember("numbers", numbers);
+  paintSwitch("numbers", numbers);
+  paintNumbers();
+}));
+
+document.querySelectorAll("[data-speed]").forEach((b) => b.addEventListener("click", () => {
+  speed = b.dataset.speed;
+  paintSwitch("speed", speed);
+  if (state.stop && state.stop.phase === "running") dealStop(true);   // a change of speed starts the run again
+}));
+
+/* ---------- keyboard ----------
+   Space or Enter moves the game on: show the answer, then a new time. In Stop the clock: start, stop, new time.
+   N gives a new time. In True or false, T and F answer for the class.
+   In Past and to: Space or Enter gives a random time, then shows it. H hides or shows all the labels. */
+let clickedOn = null;   // the button last clicked with the mouse or a finger
+document.addEventListener("pointerdown", (event) => {
+  clickedOn = event.target.closest ? event.target.closest("button, a") : null;
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const target = event.target.closest ? event.target : document.body;
+  const press = event.code === "Space" || event.code === "Enter";
+  // A button reached with the Tab key keeps its own Space and Enter. One that was only clicked with the
+  // mouse lets go, so Space moves the game on instead of pressing that button again.
+  if (event.key === "Tab") clickedOn = null;
+  const focused = press && target.closest("button, a");
+  if (focused) { if (focused !== clickedOn) return; focused.blur(); }
+  const key = event.key.toLowerCase();
+
+  if (press) { event.preventDefault(); carryOn(); }
+  else if (key === "n") newTime();
+  else if (mode === "learn" && key === "h") hideOrShowAll();
+  else if (mode === "truth" && key === "t") answerTruth(true);
+  else if (mode === "truth" && key === "f") answerTruth(false);
+});
+
+/* The card's words are refitted, and the wheel laid out again, when the window changes size. */
+let refit;
+function scheduleRefit() {
+  cancelAnimationFrame(refit);
+  refit = requestAnimationFrame(() => { fitCard(); layoutWheel(); });
+}
+window.addEventListener("resize", scheduleRefit);
+window.addEventListener("orientationchange", scheduleRefit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRefit);
+if (window.ResizeObserver) {
+  new ResizeObserver(scheduleRefit).observe(cardEl);
+  new ResizeObserver(scheduleRefit).observe(wheelEl);
+}
+
+paintSwitch("level", level);
+paintSwitch("numbers", numbers);
+paintNumbers();
+applyMode();
+</script>
+</body>
+</html>
