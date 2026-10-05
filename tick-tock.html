@@ -513,7 +513,17 @@
               <button type="button" data-numbers="none" aria-pressed="false" aria-label="No numbers">None</button>
             </span>
           </span>
-          <span class="setting">
+          <!-- Past and to has its own level: it starts with every time showing, and can be cut down. -->
+          <span class="setting" id="show-setting" hidden>
+            <span class="setting-name">Level</span>
+            <span class="switch" role="group" aria-label="Level">
+              <button type="button" data-show="fives" class="on" aria-pressed="true" title="all twelve times">Fives</button>
+              <button type="button" data-show="quarters" aria-pressed="false" title="o'clock, quarter past, half past, quarter to">Quarters</button>
+              <button type="button" data-show="halves" aria-pressed="false" title="o'clock and half past">Halves</button>
+            </span>
+          </span>
+          <!-- The games share a level: they start easy and build up. -->
+          <span class="setting" id="level-setting">
             <span class="setting-name">Level</span>
             <span class="switch" role="group" aria-label="Level">
               <button type="button" data-level="halves" class="on" aria-pressed="true" title="o'clock and half past">Halves</button>
@@ -632,17 +642,19 @@ function loadMode() {
 }
 
 let mode = loadMode();
-let level = recall("level", Object.keys(LEVELS), "halves");
+let level = recall("level", Object.keys(LEVELS), "halves");   // the four games: start easy, build up
+let learnLevel = "fives";                                     // Past and to: always opens with every time showing
+const levelNow = () => (mode === "learn" ? learnLevel : level);
 let numbers = recall("numbers", ["all", "four", "none"], "all");
 let speed = "slow";
 
 /* Times are dealt from a shuffled deck for each game and level, so none repeats until all have been used. */
 const decks = {};
 function dealTime() {
-  const key = mode + "." + level;
+  const key = mode + "." + levelNow();
   if (!decks[key] || !decks[key].length) {
     const all = [];
-    for (let h = 0; h < 12; h++) LEVELS[level].forEach((m) => all.push(h * 60 + m));
+    for (let h = 0; h < 12; h++) LEVELS[levelNow()].forEach((m) => all.push(h * 60 + m));
     decks[key] = shuffle(all);
   }
   return decks[key].pop();
@@ -814,7 +826,9 @@ const state = { learn: null, read: null, stop: null, truth: null, later: null };
    Click a time to hide it and again to bring it back, so the class
    can be tested on a few or on all of them. "Random time" puts a
    time on the clock; the label it needs is marked.
-   The level decides which times are there at all.
+   The level decides which times are there at all. This tab is for
+   learning, so it has a level of its own: it opens on Fives, with
+   all twelve times showing, and can be cut down to Quarters or Halves.
 ================================================================ */
 
 const wheelEl = $("wheel"), wheelClock = $("wheel-clock"), labelsEl = $("labels"), linesEl = $("wheel-lines");
@@ -886,7 +900,7 @@ function revealLearn() {
 }
 
 function hideOrShowAll() {
-  const here = LEVELS[level];
+  const here = LEVELS[learnLevel];
   if (here.every((m) => hiddenTimes.has(m))) hiddenTimes.clear();
   else here.forEach((m) => hiddenTimes.add(m));
   paintLearn();
@@ -894,7 +908,7 @@ function hideOrShowAll() {
 
 function paintLearn() {
   const s = state.learn;
-  const here = LEVELS[level];
+  const here = LEVELS[learnLevel];
   const onClock = s.time === null ? -1 : wrap(s.time) % 60;
 
   for (let m = 0; m < 60; m += 5) {
@@ -1162,6 +1176,8 @@ function applyMode() {
   const learn = mode === "learn";
   wheelEl.hidden = !learn;
   $("stage").hidden = learn;
+  $("show-setting").hidden = !learn;
+  $("level-setting").hidden = learn;
   (learn ? wheelClock : $("clock-tile")).appendChild($("clock"));
   $("halves").toggleAttribute("hidden", !learn);
   newBtn.textContent = learn ? "Random time" : "New time";
@@ -1223,10 +1239,16 @@ document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("cli
   level = b.dataset.level;
   remember("level", level);
   paintSwitch("level", level);
-  // A new level means a new time everywhere: here now, and in the other games when they are next opened.
+  // A new level means a new time in every game: here now, and in the others when they are next opened.
   stopMoving();
-  Object.keys(state).forEach((id) => { state[id] = null; });
+  Object.keys(state).forEach((id) => { if (id !== "learn") state[id] = null; });
   firstTime();
+}));
+
+document.querySelectorAll("[data-show]").forEach((b) => b.addEventListener("click", () => {
+  learnLevel = b.dataset.show;
+  paintSwitch("show", learnLevel);
+  resetLearn();      // the labels change and the hands come off the clock
 }));
 
 document.querySelectorAll("[data-numbers]").forEach((b) => b.addEventListener("click", () => {
@@ -1284,6 +1306,7 @@ if (window.ResizeObserver) {
 }
 
 paintSwitch("level", level);
+paintSwitch("show", learnLevel);
 paintSwitch("numbers", numbers);
 paintNumbers();
 applyMode();
