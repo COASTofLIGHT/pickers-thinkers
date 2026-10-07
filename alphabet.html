@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alphabet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Atkinson+Hyperlegible:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist: #EDF3F2;
+    --ink: #10303A;
+    --ink-soft: #456670;
+    --focus: #0B62A4;
+    --panel: #F9FBFB;
+    --line: rgba(16, 48, 58, 0.14);
+    --teal: #A8D5CB;
+    --sand: #F2D9A6;
+    --coral: #F4B5A0;
+    --lilac: #C9C3EA;
+    --sky: #A9CCEB;
+    --rose: #F0C2D3;
+    --leaf: #C7DE9F;
+    --font: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0; min-height: 100%;
+    background: var(--mist); color: var(--ink);
+    font-family: var(--font);
+    -webkit-text-size-adjust: 100%;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; margin: 0; letter-spacing: -0.02em; line-height: 1.05; }
+  button { font-family: var(--font); }
+  button:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
+  footer { color: var(--ink-soft); font-size: 0.9rem; }
+  main {
+    width: 100%; max-width: 760px; padding: 14px 20px 20px;
+    display: flex; flex-direction: column; gap: 12px; flex: 1;
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+  .hint { color: var(--ink-soft); font-size: 1rem; margin: 0; }
+
+  .back {
+    align-self: flex-start;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+  .back:hover { text-decoration: underline; }
+  .back:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+  /* The two tabs: Alphabet and Alphabet Rush */
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs button {
+    padding: 8px 18px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+  }
+  .tabs button:hover { border-color: var(--ink-soft); }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: var(--mist); border-color: var(--ink); }
+  .tabs button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+  .panel { display: flex; flex-direction: column; gap: 12px; }
+
+  .tile {
+    width: 100%; height: clamp(170px, 38vh, 400px);
+    border-radius: 1.1rem;
+    background: var(--sky); color: var(--ink);
+    display: grid; place-items: center;
+    transition: background-color 120ms linear;
+    overflow: hidden; user-select: none;
+  }
+  .tile.idle { background: var(--panel); color: var(--ink-soft); border: 3px dashed var(--line); }
+  .tile.stopped { box-shadow: inset 0 0 0 10px var(--ink); }
+  /* On the Alphabet tab the tile itself is the button */
+  button.tile { border: 0; padding: 0; cursor: pointer; }
+  button.tile:hover:not(.idle) { filter: brightness(0.97); }
+  .letter {
+    font-family: "Atkinson Hyperlegible", var(--font);
+    font-weight: 700;
+    font-size: min(32vh, 40vw, 20rem);
+    line-height: 1;
+  }
+  .letter.pop { animation: pop 160ms ease-out; }
+  @keyframes pop { from { transform: scale(0.82); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  .idle .letter { font-size: clamp(1.4rem, 5vw, 2.2rem); font-family: var(--font); font-weight: 700; text-align: center; padding: 0 24px; }
+
+  .timer { height: 10px; margin-top: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+  .timer span { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 5px; }
+
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .score { background: var(--panel); border: 1px solid var(--line); border-radius: 0.9rem; padding: 6px 14px; }
+  .score b { display: block; font-size: 1.6rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score small { color: var(--ink-soft); font-size: 0.9rem; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .controls.one { grid-template-columns: 1fr; }
+  button.big {
+    font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em;
+    padding: 12px; border-radius: 0.9rem; border: 0; cursor: pointer; color: var(--ink);
+    min-height: 58px;
+  }
+  #newBtn, #startBtn { background: var(--leaf); }
+  #stopBtn { background: var(--coral); }
+  button.big:hover:not(:disabled) { filter: brightness(0.96); }
+  button.big:disabled { opacity: 0.35; cursor: default; }
+
+  .options { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; }
+  fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  legend { float: left; margin-right: 8px; color: var(--ink-soft); font-size: 0.95rem; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span {
+    display: inline-block; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 0.95rem;
+  }
+  .seg input:checked + span { background: var(--ink); color: var(--mist); border-color: var(--ink); }
+  .seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .options.locked { opacity: 0.45; pointer-events: none; }
+
+  @media (max-width: 480px) {
+    .score b { font-size: 1.3rem; }
+    button.big { font-size: 1.25rem; min-height: 54px; }
+    .tabs button { padding: 7px 14px; font-size: 0.95rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .letter.pop { animation: none; }
+    .tile { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="https://coastoflight.github.io/pickers-thinkers/">&larr; Pickers and Thinkers</a>
+
+  <header>
+    <h1>Alphabet</h1>
+    <div class="tabs" role="tablist" aria-label="Alphabet games" id="tabs">
+      <button type="button" role="tab" id="tab-letter" data-mode="letter" aria-controls="letter-panel" aria-selected="true">Alphabet</button>
+      <button type="button" role="tab" id="tab-rush" data-mode="rush" aria-controls="rush-panel" aria-selected="false" tabindex="-1">Alphabet Rush</button>
+    </div>
+  </header>
+
+  <!-- Tab 1, Alphabet: one random letter each time you tap -->
+  <section class="panel" id="letter-panel" role="tabpanel" aria-labelledby="tab-letter">
+    <p class="hint">Tap the tile for a random letter.</p>
+
+    <button type="button" class="tile idle" id="pickTile" aria-label="Show a random letter">
+      <span class="letter" id="pickLetter" aria-live="polite">Tap for a letter</span>
+    </button>
+
+    <div class="controls one">
+      <button class="big" id="newBtn" type="button">New letter</button>
+    </div>
+  </section>
+
+  <!-- Tab 2, Alphabet Rush: the letters come faster and faster -->
+  <section class="panel" id="rush-panel" role="tabpanel" aria-labelledby="tab-rush" hidden>
+    <p class="hint">Say each letter before the next one. Stop when you say a letter incorrectly.</p>
+
+    <div class="stage">
+      <div class="tile idle" id="tile" aria-live="off">
+        <div class="letter" id="letter">Press Start</div>
+      </div>
+      <div class="timer" aria-hidden="true"><span id="bar"></span></div>
+    </div>
+
+    <div class="controls">
+      <button class="big" id="startBtn" type="button">Start</button>
+      <button class="big" id="stopBtn" type="button" disabled>Stop</button>
+    </div>
+
+    <div class="scores">
+      <div class="score"><b id="count">0</b><small>letters this round</small></div>
+      <div class="score"><b id="best">0</b><small>best round</small></div>
+      <div class="score"><b id="speed">2.0s</b><small>per letter</small></div>
+    </div>
+  </section>
+
+  <!-- These choices are used by both tabs -->
+  <div class="options" id="options">
+    <fieldset>
+      <legend>Letters</legend>
+      <label class="seg"><input type="radio" name="case" value="upper" checked><span>ABC</span></label>
+      <label class="seg"><input type="radio" name="case" value="lower"><span>abc</span></label>
+      <label class="seg"><input type="radio" name="case" value="mixed"><span>Mixed</span></label>
+    </fieldset>
+    <fieldset>
+      <legend>Pool</legend>
+      <label class="seg"><input type="radio" name="pool" value="all" checked><span>All 26</span></label>
+      <label class="seg"><input type="radio" name="pool" value="tricky"><span>Tricky letters</span></label>
+    </fieldset>
+  </div>
+
+  <footer>Tricky letters: A E I G J H K Q U V B W Y R.<span id="rushNote" hidden> Starts at 2 seconds and gets a little faster with every letter.</span></footer>
+</main>
+
+<script>
+(function () {
+  /* ---------------------------------------------------------------
+     Two tabs on one page.
+       Alphabet:      tap for one random letter at a time.
+       Alphabet Rush: the letters change by themselves, faster and
+                      faster, until someone presses Stop.
+     A link can open a tab directly: ?mode=letter or ?mode=rush.
+     Otherwise the page opens on the last one used.
+  ---------------------------------------------------------------- */
+
+  const ALL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const TRICKY = "AEIGJHKQUVBWYR".split("");
+  const COLOURS = ["--teal", "--sand", "--coral", "--lilac", "--sky", "--rose", "--leaf"];
+
+  const $ = id => document.getElementById(id);
+  const options = $("options");
+  const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
+  const letters = () => val("pool") === "tricky" ? TRICKY : ALL;
+
+  /* ABC, abc or a mix of the two */
+  function inCase(l) {
+    const mode = val("case");
+    if (mode === "lower") return l.toLowerCase();
+    if (mode === "mixed" && Math.random() < 0.5) return l.toLowerCase();
+    return l;
+  }
+
+  let lastColour = null;
+  function pickColour() {
+    let c;
+    do { c = COLOURS[Math.floor(Math.random() * COLOURS.length)]; } while (c === lastColour);
+    lastColour = c;
+    return c;
+  }
+
+  function pop(el) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+
+  /* ===============================================================
+     Tab 1: Alphabet
+     Every letter in the pool comes up once before any comes again.
+  ================================================================ */
+
+  const pickTile = $("pickTile"), pickLetter = $("pickLetter");
+  let pile = [], lastPicked = null;
+
+  function newLetter() {
+    if (!pile.length) {
+      pile = letters().slice();
+      for (let i = pile.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pile[i], pile[j]] = [pile[j], pile[i]];
+      }
+      if (pile.length > 1 && pile[pile.length - 1] === lastPicked) pile.unshift(pile.pop());
+    }
+    lastPicked = pile.pop();
+    pickTile.classList.remove("idle");
+    pickTile.style.background = `var(${pickColour()})`;
+    pickLetter.textContent = inCase(lastPicked);
+    pop(pickLetter);
+  }
+
+  pickTile.addEventListener("click", newLetter);
+  $("newBtn").addEventListener("click", newLetter);
+  /* Changing the pool starts a fresh set of letters */
+  document.querySelectorAll('input[name="pool"]').forEach(r => r.addEventListener("change", () => { pile = []; }));
+
+  /* ===============================================================
+     Tab 2: Alphabet Rush
+  ================================================================ */
+
+  const START_MS = 2000;   // first letter
+  const FACTOR = 0.96;     // each letter is 4% faster
+  const MIN_MS = 600;      // fastest it gets
+
+  const tile = $("tile"), letterEl = $("letter"), bar = $("bar");
+  const startBtn = $("startBtn"), stopBtn = $("stopBtn");
+  const countEl = $("count"), bestEl = $("best"), speedEl = $("speed");
+
+  let running = false, timer = null, interval = START_MS, count = 0, best = 0;
+  let lastLetter = null;
+
+  try { best = parseInt(localStorage.getItem("alphabetRushBest") || "0", 10) || 0; } catch (e) { best = 0; }
+  bestEl.textContent = best;
+
+  function pickLetterForRush() {
+    const pool = letters();
+    let l;
+    do { l = pool[Math.floor(Math.random() * pool.length)]; } while (l === lastLetter && pool.length > 1);
+    lastLetter = l;
+    return inCase(l);
+  }
+
+  function runBar(ms) {
+    bar.style.transition = "none";
+    bar.style.width = "100%";
+    void bar.offsetWidth;
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = "0%";
+  }
+
+  function showLetter() {
+    tile.style.background = `var(${pickColour()})`;
+    letterEl.textContent = pickLetterForRush();
+    pop(letterEl);
+    speedEl.textContent = (interval / 1000).toFixed(1) + "s";
+    runBar(interval);
+    timer = setTimeout(next, interval);
+  }
+
+  function next() {
+    count++;
+    countEl.textContent = count;
+    interval = Math.max(MIN_MS, Math.round(interval * FACTOR));
+    showLetter();
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    count = 0; interval = START_MS; lastLetter = null;
+    countEl.textContent = 0;
+    tile.classList.remove("idle", "stopped");
+    options.classList.add("locked");
+    startBtn.disabled = true; stopBtn.disabled = false;
+    stopBtn.focus();
+    showLetter();
+  }
+
+  function stop() {
+    if (!running) return;
+    running = false;
+    clearTimeout(timer);
+    const w = getComputedStyle(bar).width;
+    bar.style.transition = "none"; bar.style.width = w;
+    tile.classList.add("stopped");
+    if (count > best) {
+      best = count; bestEl.textContent = best;
+      try { localStorage.setItem("alphabetRushBest", String(best)); } catch (e) {}
+    }
+    options.classList.remove("locked");
+    startBtn.disabled = false; stopBtn.disabled = true;
+    startBtn.textContent = "Start again";
+    startBtn.focus();
+  }
+
+  startBtn.addEventListener("click", start);
+  stopBtn.addEventListener("click", stop);
+  bestEl.parentElement.addEventListener("dblclick", () => {
+    best = 0; bestEl.textContent = 0;
+    try { localStorage.removeItem("alphabetRushBest"); } catch (e) {}
+  });
+
+  /* ===============================================================
+     The tabs
+  ================================================================ */
+
+  const tabs = [...document.querySelectorAll("#tabs [role=tab]")];
+  let mode = "letter";
+
+  function chooseMode(next, remember) {
+    if (running && next !== "rush") stop();     // leaving the game ends the round
+    mode = next;
+    tabs.forEach(t => {
+      const on = t.dataset.mode === mode;
+      t.setAttribute("aria-selected", on);
+      t.tabIndex = on ? 0 : -1;
+    });
+    $("letter-panel").hidden = mode !== "letter";
+    $("rush-panel").hidden = mode !== "rush";
+    $("rushNote").hidden = mode !== "rush";
+    document.title = mode === "rush" ? "Alphabet Rush" : "Alphabet";
+    if (remember) { try { localStorage.setItem("alphabet.mode", mode); } catch (e) {} }
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => chooseMode(t.dataset.mode, true));
+    t.addEventListener("keydown", e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const to = tabs[(i + 1) % tabs.length];
+      chooseMode(to.dataset.mode, true);
+      to.focus();
+    });
+  });
+
+  /* Space: a new letter on Alphabet, Start or Stop on Alphabet Rush */
+  document.addEventListener("keydown", e => {
+    if (e.code !== "Space") return;
+    /* Space still works straight after choosing ABC, abc, All 26 and so on */
+    if (e.target instanceof HTMLInputElement && e.target.type !== "radio") return;
+    if (e.target.closest && e.target.closest("#tabs")) return;
+    e.preventDefault();
+    if (mode === "letter") newLetter();
+    else running ? stop() : start();
+  });
+
+  /* Open on the tab in the link, or the last one used. */
+  let startMode = "letter";
+  try {
+    const saved = localStorage.getItem("alphabet.mode");
+    if (saved === "letter" || saved === "rush") startMode = saved;
+  } catch (e) {}
+  const asked = new URLSearchParams(location.search).get("mode");
+  if (asked === "letter" || asked === "rush") startMode = asked;
+  chooseMode(startMode, false);
+})();
+</script>
+</body>
+</html>
