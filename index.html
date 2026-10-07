@@ -66,13 +66,15 @@
     list-style: none;
   }
 
-  /* Tile colours: give a tile's <li> one of the classes below.
-     No class = general lavender. (Level colours live on Word Lab.) */
-  .tiles li    { --c: #C9C3EA; } /* general tools: lavender */
-  .tiles li.class-tools { --c: #F0C2D3; } /* classroom tools: pink */
-  .tiles li.people { --c: #C7DE9F; } /* People: leaf green */
-  .tiles li.tide { --c: #A9CCEB; } /* Ask the Turning Tide: sky blue */
-  .tiles li.compass { --c: #F4B5A0; } /* Decision Compass: coral orange */
+  /* Tile colours follow the order of the tiles, the same seven as the main index.
+     Move a tile and it takes the colour of its new place. */
+  .tiles li:nth-child(7n+1) { --c: #A8D5CB; }
+  .tiles li:nth-child(7n+2) { --c: #F2D9A6; }
+  .tiles li:nth-child(7n+3) { --c: #F4B5A0; }
+  .tiles li:nth-child(7n+4) { --c: #C9C3EA; }
+  .tiles li:nth-child(7n+5) { --c: #A9CCEB; }
+  .tiles li:nth-child(7n+6) { --c: #F0C2D3; }
+  .tiles li:nth-child(7n+7) { --c: #C7DE9F; }
 
   .tiles a {
     display: flex;
@@ -115,7 +117,7 @@
 
   <!--
     To add a page: copy one <li> block, then change the href, title and description.
-    For a colour, set the <li> class (see the colour list in the <style> section).
+    The colour comes from the tile's place in the list.
   -->
   <ul class="tiles">
     <li>
@@ -124,43 +126,43 @@
         <span class="about">Random objects and animals.</span>
       </a>
     </li>
-    <li class="class-tools">
+    <li>
       <a href="number-caller.html">
         <span class="title">Numbers</span>
         <span class="about">Random Numbers.</span>
       </a>
     </li>
-    <li class="people">
+    <li>
       <a href="people.html">
         <span class="title">People</span>
         <span class="about">Random names.</span>
       </a>
     </li>
-    <li class="tide">
+    <li>
       <a href="ask-the-turning-tide.html">
         <span class="title">Ask the Turning Tide</span>
         <span class="about">When you can't decide, let the tide.</span>
       </a>
     </li>
     <li>
-      <a href="disappearing-words.html">
-        <span class="title">Disappearing Words</span>
-        <span class="about">Paste a text, make the words disappear.</span>
+      <a href="memory.html">
+        <span class="title">Memory</span>
+        <span class="about">Make words disappear.</span>
       </a>
     </li>
-    <li class="class-tools">
+    <li>
       <a href="alphabet-rush.html">
         <span class="title">Alphabet Rush</span>
         <span class="about">Random letters game.</span>
       </a>
     </li>
-     <li class="people">
+    <li>
       <a href="tick-tock.html">
         <span class="title">Tick Tock</span>
         <span class="about">What's the Time?</span>
       </a>
     </li>
-    <li class="compass">
+    <li>
       <a href="decision-compass.html">
         <span class="title">Decision Compass</span>
         <span class="about">Got a decision to make? Analyse it from different angles.</span>
