@@ -22,6 +22,8 @@
 
   *, *::before, *::after { box-sizing: border-box; }
 
+  [hidden] { display: none !important; }
+
   body {
     margin: 0;
     min-height: 100vh;
@@ -55,7 +57,35 @@
   .back:hover { text-decoration: underline; }
   .back:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-  header p {
+  /* The title, with the two tabs beside it */
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.2rem;
+  }
+
+  .tabs {
+    display: inline-flex;
+    height: 2.6rem;
+    border: 2px solid var(--line);
+    border-radius: 0.6rem;
+    overflow: hidden;
+  }
+  .tabs button {
+    padding: 0 1rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .tabs button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+  .lead {
     margin: 0.35rem 0 0;
     color: var(--ink-soft);
     font-size: 1rem;
@@ -187,6 +217,35 @@
 
   .number[hidden], .done[hidden] { display: none; }
 
+  /* ---------- Number Rush ---------- */
+
+  /* Here the tile is not a button: the numbers change by themselves. */
+  .tile.rush {
+    height: clamp(9rem, 31vh, 22rem);
+    cursor: default;
+    transition: background-color 120ms linear;
+    user-select: none;
+  }
+  .tile.rush:hover { filter: none; }
+  .tile.rush.idle { background: #F9FBFB; border: 3px dashed rgba(16, 48, 58, 0.2); color: var(--ink-soft); }
+  .tile.rush.stopped { box-shadow: inset 0 0 0 10px var(--ink); }
+
+  @keyframes pop { from { transform: scale(0.82); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  .pop { animation: pop 160ms ease-out; }
+
+  .timer { height: 10px; margin-top: 10px; border-radius: 5px; background: rgba(16, 48, 58, 0.14); overflow: hidden; }
+  .timer span { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 5px; }
+
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .score { background: #F9FBFB; border: 1px solid rgba(16, 48, 58, 0.14); border-radius: 0.9rem; padding: 6px 14px; }
+  .score b { display: block; font-size: 1.6rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score small { color: var(--ink-soft); font-size: 0.9rem; }
+
+  /* On this tab the message line only takes up room when there is a message */
+  #rush-error:empty { display: none; }
+  .field input:disabled { opacity: 0.5; }
+  .secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
   @keyframes settle {
     from { opacity: 0; transform: translateY(0.4rem); }
     to   { opacity: 1; transform: none; }
@@ -208,8 +267,14 @@
     white-space: nowrap;
   }
 
+  @media (max-width: 480px) {
+    .score b { font-size: 1.3rem; }
+    .tabs button { padding: 0 0.75rem; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .fresh { animation: none; }
+    .fresh, .pop { animation: none; }
+    .tile.rush { transition: none; }
   }
 </style>
 </head>
@@ -219,8 +284,15 @@
 
   <header>
     <h1>Numbers</h1>
-    <p>Set a range, then call numbers one at a time — no repeats until every number's been called.</p>
+    <div class="tabs" role="tablist" aria-label="Number games" id="tabs">
+      <button type="button" role="tab" id="tab-call" data-mode="call" aria-controls="call-panel" aria-selected="true">Numbers</button>
+      <button type="button" role="tab" id="tab-rush" data-mode="rush" aria-controls="rush-panel" aria-selected="false" tabindex="-1">Number Rush</button>
+    </div>
   </header>
+
+  <!-- Tab 1, Numbers: call numbers one at a time -->
+  <section id="call-panel" role="tabpanel" aria-labelledby="tab-call">
+  <p class="lead">Set a range, then call numbers one at a time — no repeats until every number's been called.</p>
 
   <div class="controls">
     <div class="field">
@@ -246,9 +318,59 @@
 
   <p class="status" id="status-line"></p>
   <p class="sr" role="status" id="status"></p>
+  </section>
+
+  <!-- Tab 2, Number Rush: the numbers come faster and faster -->
+  <section id="rush-panel" role="tabpanel" aria-labelledby="tab-rush" hidden>
+    <p class="lead">Say each number before the next one. Stop when you say a number incorrectly.</p>
+
+    <div class="controls">
+      <div class="field">
+        <label for="rush-from">From</label>
+        <input type="number" id="rush-from" value="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="rush-to">To</label>
+        <input type="number" id="rush-to" value="20" inputmode="numeric">
+      </div>
+      <div class="buttons">
+        <button type="button" class="primary" id="rush-start">Start</button>
+        <button type="button" class="secondary" id="rush-stop" disabled>Stop</button>
+      </div>
+      <p class="error" id="rush-error"></p>
+    </div>
+
+    <div class="tile rush idle" id="rush-tile" aria-live="off">
+      <span class="tag" aria-hidden="true">Number</span>
+      <span class="number" id="rush-number" hidden></span>
+      <span class="done" id="rush-idle">Press Start</span>
+    </div>
+    <div class="timer" aria-hidden="true"><span id="rush-bar"></span></div>
+
+    <div class="scores">
+      <div class="score"><b id="rush-count">0</b><small>numbers this round</small></div>
+      <div class="score"><b id="rush-best">0</b><small>best round</small></div>
+      <div class="score"><b id="rush-speed">2.0s</b><small>per number</small></div>
+    </div>
+
+    <p class="status">Starts at 2 seconds and gets a little faster with every number.</p>
+  </section>
 </main>
 
 <script>
+  /* ---------------------------------------------------------------
+     Two tabs on one page.
+       Numbers:     call numbers one at a time, with no repeats.
+       Number Rush: set a range, press Start, and the numbers change
+                    by themselves, faster and faster, until Stop.
+     A link can open a tab directly: ?mode=call or ?mode=rush.
+     Otherwise the page opens on the last one used.
+  ---------------------------------------------------------------- */
+
+  /* ===============================================================
+     Tab 1: Numbers
+  ================================================================ */
+
   const fromInput = document.getElementById("from");
   const toInput = document.getElementById("to");
   const callBtn = document.getElementById("call-btn");
@@ -369,15 +491,179 @@
     input.addEventListener("change", () => { startRound(); });
   });
 
+  startRound();
+
+  /* ===============================================================
+     Tab 2: Number Rush
+     Everything for this tab lives inside the brackets below, so its
+     names can't clash with the first tab.
+  ================================================================ */
+
+  const rush = (() => {
+    const START_MS = 2000;   // first number
+    const FACTOR = 0.96;     // each number is 4% faster
+    const MIN_MS = 600;      // fastest it gets
+    const COLOURS = ["#A8D5CB", "#F2D9A6", "#F4B5A0", "#C9C3EA", "#A9CCEB", "#F0C2D3", "#C7DE9F"];
+
+    const $ = (id) => document.getElementById(id);
+    const from = $("rush-from"), to = $("rush-to"), error = $("rush-error");
+    const startBtn = $("rush-start"), stopBtn = $("rush-stop");
+    const tile = $("rush-tile"), numberEl = $("rush-number"), idleEl = $("rush-idle"), bar = $("rush-bar");
+    const countEl = $("rush-count"), bestEl = $("rush-best"), speedEl = $("rush-speed");
+
+    let running = false, timer = null, interval = START_MS, count = 0, best = 0;
+    let low = 1, high = 20, lastNumber = null, lastColour = null;
+
+    try { best = parseInt(localStorage.getItem("numberRushBest") || "0", 10) || 0; } catch (e) { best = 0; }
+    bestEl.textContent = best;
+
+    /* The range typed in before playing, such as 1 and 20 */
+    function checkRange() {
+      const a = parseInt(from.value, 10), b = parseInt(to.value, 10);
+      let message = "";
+      if (!Number.isFinite(a) || !Number.isFinite(b)) message = "Enter a whole number in both fields.";
+      else if (a >= b) message = "\u201cFrom\u201d must be less than \u201cTo\u201d.";
+      error.textContent = message;
+      if (!running) startBtn.disabled = Boolean(message);
+      if (message) return false;
+      low = a; high = b;
+      return true;
+    }
+
+    function pickNumber() {
+      let n;
+      do { n = low + Math.floor(Math.random() * (high - low + 1)); } while (n === lastNumber);
+      lastNumber = n;
+      return n;
+    }
+
+    function pickColour() {
+      let c;
+      do { c = COLOURS[Math.floor(Math.random() * COLOURS.length)]; } while (c === lastColour);
+      lastColour = c;
+      return c;
+    }
+
+    function runBar(ms) {
+      bar.style.transition = "none";
+      bar.style.width = "100%";
+      void bar.offsetWidth;
+      bar.style.transition = "width " + ms + "ms linear";
+      bar.style.width = "0%";
+    }
+
+    function showNumber() {
+      tile.style.background = pickColour();
+      numberEl.textContent = pickNumber();
+      numberEl.classList.remove("pop"); void numberEl.offsetWidth; numberEl.classList.add("pop");
+      speedEl.textContent = (interval / 1000).toFixed(1) + "s";
+      runBar(interval);
+      timer = setTimeout(next, interval);
+    }
+
+    function next() {
+      count++;
+      countEl.textContent = count;
+      interval = Math.max(MIN_MS, Math.round(interval * FACTOR));
+      showNumber();
+    }
+
+    function start() {
+      if (running || !checkRange()) return;
+      running = true;
+      count = 0; interval = START_MS; lastNumber = null;
+      countEl.textContent = 0;
+      tile.classList.remove("idle", "stopped");
+      idleEl.hidden = true; numberEl.hidden = false;
+      from.disabled = to.disabled = true;          // the range is fixed while the round is on
+      startBtn.disabled = true; stopBtn.disabled = false;
+      stopBtn.focus();
+      showNumber();
+    }
+
+    function stop() {
+      if (!running) return;
+      running = false;
+      clearTimeout(timer);
+      const w = getComputedStyle(bar).width;
+      bar.style.transition = "none"; bar.style.width = w;
+      tile.classList.add("stopped");
+      if (count > best) {
+        best = count; bestEl.textContent = best;
+        try { localStorage.setItem("numberRushBest", String(best)); } catch (e) {}
+      }
+      from.disabled = to.disabled = false;
+      startBtn.disabled = false; stopBtn.disabled = true;
+      startBtn.textContent = "Start again";
+      startBtn.focus();
+    }
+
+    startBtn.addEventListener("click", start);
+    stopBtn.addEventListener("click", stop);
+    [from, to].forEach((input) => input.addEventListener("input", checkRange));
+    /* Double-click "best round" to set it back to 0 */
+    bestEl.parentElement.addEventListener("dblclick", () => {
+      best = 0; bestEl.textContent = 0;
+      try { localStorage.removeItem("numberRushBest"); } catch (e) {}
+    });
+
+    checkRange();
+    return { toggle: () => { running ? stop() : start(); }, stop };
+  })();
+
+  /* ===============================================================
+     The tabs
+  ================================================================ */
+
+  const tabs = [...document.querySelectorAll("#tabs [role=tab]")];
+  let mode = "call";
+
+  function chooseMode(next, remember) {
+    if (next !== "rush") rush.stop();            // leaving the game ends the round
+    mode = next;
+    tabs.forEach((t) => {
+      const on = t.dataset.mode === mode;
+      t.setAttribute("aria-selected", on);
+      t.tabIndex = on ? 0 : -1;
+    });
+    document.getElementById("call-panel").hidden = mode !== "call";
+    document.getElementById("rush-panel").hidden = mode !== "rush";
+    if (remember) { try { localStorage.setItem("numbers.mode", mode); } catch (e) {} }
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener("click", () => chooseMode(t.dataset.mode, true));
+    t.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      const to = tabs[(i + 1) % tabs.length];
+      chooseMode(to.dataset.mode, true);
+      to.focus();
+    });
+  });
+
+  /* Keys. Numbers: Space or Enter calls a number, R resets.
+     Number Rush: Space starts or stops. Nothing happens while typing in a box. */
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const tag = document.activeElement && document.activeElement.tagName;
     if (tag === "INPUT") return;
+    if (event.target.closest && event.target.closest("#tabs")) return;
+    if (mode === "rush") {
+      if (event.code === "Space") { event.preventDefault(); rush.toggle(); }
+      return;
+    }
     if (event.code === "Space" || event.code === "Enter") { event.preventDefault(); callNumber(); }
     else if (event.key === "r" || event.key === "R") reset();
   });
 
-  startRound();
+  /* Open on the tab in the link, or the last one used. */
+  let startMode = "call";
+  try {
+    const saved = localStorage.getItem("numbers.mode");
+    if (saved === "call" || saved === "rush") startMode = saved;
+  } catch (e) {}
+  const asked = new URLSearchParams(location.search).get("mode");
+  if (asked === "call" || asked === "rush") startMode = asked;
+  chooseMode(startMode, false);
 </script>
 </body>
 </html>
